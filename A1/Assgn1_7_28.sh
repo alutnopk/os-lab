@@ -10,14 +10,14 @@ if [ ! -d "$output_dir" ]; then
   mkdir "$output_dir"
 fi
 
-for file in "$input_dir"; do
+for file in "$input_dir"/*.txt; do
   while IFS= read -r line; do
     first_letter=$(echo "$line" | head -c 1)
     echo "$line" >> "$output_dir/$first_letter.txt"
   done < "$file"
 done
 
-for file in "$output_dir"/; do
+for file in "$output_dir"/*.txt; do
   sort "$file" -o "$file"
 done
 
