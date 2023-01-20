@@ -7,9 +7,10 @@ do
       ;;
     n)
       name="$OPTARG"
-      ;;
+ ;;
     s)
       column="$OPTARG"
+      echo "You entered $column under the s flag"
       ;;
     h)
       echo "UTILITY NAME: CSVFileManip"
@@ -30,41 +31,46 @@ do
       ;;
   esac
 done
-
 shift $((OPTIND-1))
-[ ! -e "main.csv" ] && {echo "DATE,CATEGORY,AMOUNT,NAME" > main.csv}
-echo "$1,$2,$3,$4" >> main.csv
+touch "main.csv"
+if [ ! -s main.csv ]; then
+    echo "DATE,CATEGORY,AMOUNT,NAME" >> main.csv
+fi
 
 if [ -n "$category" ]
 then
     awk -F"," -v awkcategory="$category" 'FNR>1 && $2==awkcategory{amt=amt+$3} END{printf("Total amount of category %s is %Lf\n",awkcategory,amt)}' main.csv
-fi
-if [ -n "$name" ]
+
+elif [ -n "$name" ]
 then
     awk -F"," -v awkname="$name" 'FNR>1 && $4==awkname{amt=amt+$3} END{printf("Total expenditure of %s is %Lf\n",awkname,amt)}' main.csv
-fi
-if [ -n "$column" ]
+
+elif [ -n "$column" ]
 then
     case "$column" in
     "date")
-      sort -t, -k1 main.csv > temp.csv
+      (head -n1 main.csv && tail -n+2 main.csv | sort -t, -k1) > temp.csv
     ;;
     "category")
-      sort -t, -k2 main.csv > temp.csv
+      (head -n1 main.csv && tail -n+2 main.csv | sort -t, -k2) > temp.csv
     ;;
     "amount")
-      sort -t, -k3 main.csv > temp.csv
+      (head -n1 main.csv && tail -n+2 main.csv | sort -t, -k3) > temp.csv
     ;;
     "name")
-      sort -t, -k4 main.csv > temp.csv
+      (head -n1 main.csv && tail -n+2 main.csv | sort -t, -k4) > temp.csv
     ;;
     *)
       echo "Unknown column type"
-      exit 1
+      exit 0
     ;;
     esac
+    cat temp.csv>main.csv
+    rm temp.csv
 else
-    sort -t, -k1 main.csv > temp.csv
+     echo "$1,$2,$3,$4" >>main.csv
+     (head -n1 main.csv && tail -n+2 main.csv | sort -t, -k1) > temp.csv
+     cat temp.csv>main.csv
+     rm temp.csv
 fi
-cat temp.csv > main.csv
-rm temp.csv
+
