@@ -32,7 +32,7 @@ do
 done
 
 shift $((OPTIND-1))
-touch "main.csv"
+[ ! -e "main.csv" ] && {echo "DATE,CATEGORY,AMOUNT,NAME" > main.csv}
 echo "$1,$2,$3,$4" >> main.csv
 
 if [ -n "$category" ]
