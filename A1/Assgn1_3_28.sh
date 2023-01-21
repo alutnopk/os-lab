@@ -1,36 +1,35 @@
 #!/bin/bash
 
-# usage: script.sh jsonl_dir csv_dir attr1 attr2 ...
+if [ $# -lt 3 ]; then
+    echo "Usage: $0 source_dir dest_dir attribute1 attribute2 ..."
+    exit 1
+fi
 
-jsonl_dir=$1
-csv_dir=$2
+source_dir=$1
+dest_dir=$2
+
 shift 2
-attributes="$@"
 
-# replace all spaces with commas and prefix each word with a dot
-#string="Hello World"
+attributes=("$@")
+echo "${attributes[@]}"
 
-# prefix each word with a dot, and replace all spaces with commas
-#new_string=$(echo $string | sed -r 's/ /, ./g; s/^/./')
+if [ ! -d $dest_dir ]; then
+    mkdir $dest_dir
+fi
 
+for file in $source_dir/*.jsonl; do
+    
+    csv_file="$dest_dir/$(basename $file .jsonl).csv"
 
-
-
-[ ! -e "$csv_dir" ] && mkdir "$csv_dir"
-# loop through all the JSONL files in the given directory
-for jsonl_file in "$jsonl_dir"/*.jsonl; do
-  # create a corresponding CSV file with the same name in the output directory
-  csv_file="$csv_dir"/$(basename "$jsonl_file" .jsonl).csv
-  attrs=$(echo $attributes | sed -r 's/ /, ./g; s/^/./') #s/$/\n/ # sed -r 's/ /,", ",./g; s/^/./'
-  [ ! -e "$csv_file" ] && { touch "$csv_file"; echo "$attrs" > "$csv_file"; }
-  echo $attrs
-  # extract the specified attributes from each JSON object
-  # cat "$jsonl_file" | jq -r '.' | jq -r '.'$attributes | sed 's/"/""/g' | awk -F, '{gsub(/"/,"\"\""); print}' | grep -v '^\s*$' | sed 's/^,//' >> "$csv_file"
-  cat "$jsonl_file" | jq -c "$attrs">> "$csv_file" # 
-
-	# while IFS='\n' read -r line || [[ -n "$line" ]]; do
-	# 		echo "$line"
-	# done < "$json1_file"
-
-
+    jq_attributes=""
+    for attribute in "${attributes[@]}"; do
+        jq_attributes+=" .$attribute,"
+    done
+    jq_attributes="${jq_attributes%?}"
+    
+    jq -r -c "select([$jq_attributes] | all(.; . != null)) | [$jq_attributes] | @csv" $file > $csv_file
+    
+    echo ${attributes[*]} | tr ' ' ',' > $csv_file.tmp
+    cat $csv_file >> $csv_file.tmp
+    mv $csv_file.tmp $csv_file
 done
