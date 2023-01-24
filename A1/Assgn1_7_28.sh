@@ -14,7 +14,7 @@ fi
 
 for file in "$input_dir"/*.txt; do
   while IFS= read -r line; do
-    first_letter=$(echo "$line" | head -c 1 | tr 'A-Z' 'a-z' )
+    first_letter=$(echo "$line" | head -c 1 | tr 'a-z' 'A-Z' )
     echo "$line" >> "$output_dir/$first_letter.txt"
   done < "$file"
 done
