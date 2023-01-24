@@ -1,7 +1,7 @@
 #!/bin/bash
 invalid_words=($(cat fruits.txt))
 while IFS= read -r line;do
-    if [[ ${line} =~ ^[a-zA-Z][a-zA-Z0-9]{4,19}$&&"${line}" =~ [0-9] ]]; then
+    if [[ ${line} =~ ^[a-zA-Z][a-zA-Z0-9]{4,19}$&&" ${line}" =~ [0-9] ]]; then
         for word in "${invalid_words[@]}";do
             if grep -iqF $word<<<$line;then
                 echo "NO">>validation_results.txt
@@ -13,4 +13,3 @@ while IFS= read -r line;do
         	echo "NO">>validation_results.txt
     fi
 done<usernames.txt
-

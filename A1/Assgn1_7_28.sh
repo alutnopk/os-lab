@@ -1,3 +1,5 @@
+#!/bin/bash
+
 if [ $# -eq 0 ]; then
   echo "Please provide an input directory path"
   exit 1
