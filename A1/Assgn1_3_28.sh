@@ -11,7 +11,6 @@ dest_dir=$2
 shift 2
 
 attributes=("$@")
-echo "${attributes[@]}"
 
 if [ ! -d $dest_dir ]; then
     mkdir $dest_dir
