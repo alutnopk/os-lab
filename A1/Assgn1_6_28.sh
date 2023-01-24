@@ -1,6 +1,6 @@
 #!/bin/bash
 > output.txt
-file=$1
+
 for ((i=2;i<=1000;i++));do
         arr[$i]=1
     done
@@ -12,8 +12,10 @@ for ((i=2;i<=1000;i++));do
     		  done
     	fi
 done
+
 a=2
 b=0
+
 for ((i=2;i<=1000;i++));do
 	if [[ ${arr[$i]} -ne 0 ]]; then
 		#echo $a
@@ -22,15 +24,19 @@ for ((i=2;i<=1000;i++));do
 	fi
 	a=$((a+1))
     done
-
+uniqe=1
 while IFS= read -r line
 do
     num="$((${line//[ $'\001'-$'\037']}))"
     for prime in ${arr1[@]}; do
     	if [[ $((num%prime)) -eq 0 ]]; then
+    		unique=0
     		echo -n $prime" " >> output.txt
     	fi
+    	if [[ $unique -eq 1 ]]; then
+    		echo -n $num" " >> output.txt
+	fi    		
     done 
     echo "" >> output.txt
     echo "" >> output.txt
-done <"$file"
+done < input.txt
