@@ -24,7 +24,7 @@ for ((i=2;i<=1000;i++));do
 	fi
 	a=$((a+1))
     done
-uniqe=1
+unique=1
 while IFS= read -r line
 do
     num="$((${line//[ $'\001'-$'\037']}))"

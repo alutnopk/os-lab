@@ -31,4 +31,8 @@ for file in $source_dir/*.jsonl; do
     echo ${attributes[*]} | tr ' ' ',' > $csv_file.tmp
     cat $csv_file >> $csv_file.tmp
     mv $csv_file.tmp $csv_file
+    rm csv_file.tmp
 done
+
+
+
