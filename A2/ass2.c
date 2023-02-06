@@ -33,6 +33,7 @@ int main(int argc, char **argv)
         printf("\nshell> ");
         getline(&cmdline, &n, stdin);
         cmdline[strlen(cmdline) - 1] = '\0';
+        //printf("%s", cmdline);
         cmds = Hpipes(cmdline, &noOfCMD);
         // printf("%s\n",*cmds);
         if (noOfCMD == 1)
@@ -225,6 +226,7 @@ char **Hpipes(char *line, int *numCMD)
     char dc = '\"';
     char sc = '\'';
 
+    
     if (cmds==NULL)
     {
         fprintf(stderr, "Error: allocation error\n");
@@ -243,13 +245,13 @@ char **Hpipes(char *line, int *numCMD)
 
     for (int i = 0; i < lenofcmd;)
     {
-        printf("%s\n", cmds[0]);
+        
         if (line[i] == p)
         {
             if (strlen(cmds[cmdNo]) <= 0)
             {
                 fprintf(stderr, "Error: Syntax ERROR\n");
-                printf("Hpipes");
+                
                 
                 *numCMD = 0;
                 return NULL;
@@ -307,6 +309,7 @@ char **Hpipes(char *line, int *numCMD)
             i++;
             k++;
         }
+        //printf("%s\n", cmds[0]);
     }
     *numCMD = cmdNo + 1;
     cmds[*numCMD] = NULL;
