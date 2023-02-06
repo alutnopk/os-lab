@@ -13,6 +13,7 @@ int runCMD(char **toks, int noofToks);
 int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd);
 char **Hpipes(char *line, int *numCMD);
 char **Hcmds(char *cmd, int *tokenNos);
+char** splitPipes(char* line,int *pipeProcesses);
 void exit_error(char *s);
 
 int main(int argc, char **argv)
@@ -28,14 +29,16 @@ int main(int argc, char **argv)
     int status;
     // int i;
     // printf("\033[H\033[J"); // clear everything from the screen, move cursor to top left
-    for (; keep_running;)
+    do
     {
+        cmdline = (char*)malloc(sizeof(char)*MAX_BUF_SIZE);
         printf("\nshell> ");
         getline(&cmdline, &n, stdin);
         cmdline[strlen(cmdline) - 1] = '\0';
         //printf("%s", cmdline);
         cmds = Hpipes(cmdline, &noOfCMD);
-        // printf("%s\n",*cmds);
+        printf("%s\n",cmds[0]);
+        
         if (noOfCMD == 1)
         {
             toks = Hcmds(cmdline, &nofToks);
@@ -48,7 +51,7 @@ int main(int argc, char **argv)
             int fd[2];
             int in_fd = 0;
             int pipeerror=0;
-            for (int i = 0; i < noOfCMD; i++)
+            for (int i = 0; i < noOfCMD-1; i++)
             {
                 if(pipe(fd)==-1)
                 {
@@ -84,13 +87,17 @@ int main(int argc, char **argv)
                     break;
                 }
             }
-
+            
         }
-        //free(toks);
-        // free(cmdline);
-    }
+        free(toks);
+        free(cmdline);
+        fflush(stdin);
+        fflush(stdout);
+    }while(status==EXIT_SUCCESS);
     return 0;
 }
+
+
 
 int runCMD(char **toks, int noofToks)
 {
@@ -220,7 +227,7 @@ char **Hpipes(char *line, int *numCMD)
     int bufsize = MAX_BUF_SIZE;
     char **cmds = malloc(bufsize * sizeof(char *));
     int lenofcmd = strlen(line);
-    int k;
+    int k=0;
     int cmdNo = 0;
     char p = '|';
     char dc = '\"';
@@ -309,7 +316,7 @@ char **Hpipes(char *line, int *numCMD)
             i++;
             k++;
         }
-        //printf("%s\n", cmds[0]);
+        
     }
     *numCMD = cmdNo + 1;
     cmds[*numCMD] = NULL;
