@@ -1,73 +1,169 @@
 #include <iostream>
-#include <cstdio>
 #include <cstring>
-#include <cstdlib>
 #include <vector>
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/wait.h>
+
 using namespace std;
 
-void exit_error(string s);
-void debug_print(void* ptr, size_t n)
-{
-    unsigned char* hehu = (unsigned char*) ptr;
-    cout<<"Data stored:"<<endl;
-    for(int i=0; i<(int)n; i++)
-    {
-        printf("%02x ", *(hehu+i));
-    }
-    cout<<endl;
-}
+vector<string> split_string(const string &input);
+vector<string,vector<string>> handle_pipes(const string &line, int *noOfCMDS);
+int executeCMD(vector<string> tokens);
+int executeExit();
+int executeCD(vector<string> tokens);
+
+
 int main()
 {
-    int keep_running = 1;
-    string input;
-    vector<char*> args;
-
-    cout<<"\033[H\033[J";
-    for(;keep_running;)
+    while (true)
     {
-        cout << "cppshell> ";
-        input = ""; args.clear();
-        getline(cin, input);
-        for(int i=0; i< input.length(); i++){cout<<input[i]<<endl;}
-        char* token = strtok(&input[0], " ");
-        while (token != NULL)
+        cout << "\n$ ";
+        string line;
+        getline(cin, line);
+        if (line.empty())
         {
-            args.push_back(token);
-            token = strtok(NULL, " ");
+            continue;
         }
-        args.push_back(NULL);
-        // for(auto x: args) cout<<x<<endl;
-        if (strcmp(args[0], "exit") == 0) break;
-        if(args[0])
+        int noCMDs;
+        vector<string, vector<string>> cmds = handle_pipes(line,&noCMDs);
+        printf("%d",noCMDs);
+        /*vector<string> tokens = split_string(line);
+        if (tokens[0] == "cd")
         {
-            pid_t ret = fork();
-            if (ret == 0)
-            {
-                execvp(args[0], &args[0]);
-                exit_error("ERROR: execvp failed\n");
-            }
-            else if (ret < 0)
-            {
-                exit_error("ERROR: fork failure\n");
-            }
-            else
-            {
-                int status;
-                do
-                {
-                    waitpid(ret, &status, WUNTRACED);
-                } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-            }
+            executeCD(tokens);
         }
+        else if(tokens[0]=="exit")
+        {
+            executeExit();
+        }
+        else
+        {
+
+            executeCMD(tokens);
+        }*/
+    }
+
+    return 0;
+}
+
+vector<string> split_string(const string &input)
+{
+    vector<string> tokens;
+    string current_token;
+    for (char c : input)
+    {
+        if (c == ' ')
+        {
+            tokens.push_back(current_token);
+            current_token.clear();
+        }
+        else
+        {
+            current_token += c;
+        }
+    }
+    tokens.push_back(current_token);
+    return tokens;
+}
+
+vector<string,vector<string>> handle_pipes(const string &line, int *noOfCMDS)
+{
+    vector<string,vector<string>> tokens;
+    string current_token;
+    int CMDno=0;
+
+    for (size_t i;i<line.size();)
+    {
+        if(line[i]=='|')
+        {
+            if(tokens[CMDno].empty())
+            {
+                fprintf(stderr, "Error: Syntax ERROR\n");
+                CMDno = 0;
+                return tokens;
+            }
+            CMDno++;
+            i++;
+        }
+        else if (line[i] == '\"')
+        {
+            tokens[CMDno].push_back(line[i]);
+            i++;
+            while(line[i] != '\"' && i < line.size())
+            {
+                tokens[CMDno].push_back(line[i]); 
+                i++;
+            }
+            tokens[CMDno].push_back(line[i]);
+            i++;
+        }
+        else if(line[i]=='\'')
+        {
+            tokens[CMDno].push_back(line[i]);
+            i++;
+            while(line[i] != '\'' && i < line.size())
+            {
+                tokens[CMDno].push_back(line[i]);
+                i++;
+            }
+            tokens[CMDno].push_back(line[i]);
+            i++;
+        }
+        else
+        {
+            tokens[CMDno].push_back(line[i]);
+        }
+    }
+    *noOfCMDS = CMDno+1;
+    tokens[CMDno+1].push_back('\0');
+    
+    return tokens;
+}
+
+int executeCMD(vector<string> tokens)
+{
+    vector<char *> argv(tokens.size() + 1);
+    for (size_t i = 0; i < tokens.size(); i++)
+    {
+        argv[i] = &tokens[i][0];
+    }
+    argv[tokens.size()] = nullptr;
+
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        perror("fork");
+    }
+    else if (pid == 0)
+    {
+        execvp(argv[0], argv.data());
+        perror("execvp");
+    }
+    else
+    {
+        int status;
+        waitpid(pid, &status, 0);
     }
     return 0;
 }
 
-void exit_error(string s)
+int executeExit()
 {
-    cerr<<s<<endl;
-    exit(EXIT_FAILURE);
+        exit(0);
+}
+
+int executeCD(vector<string> tokens)
+{
+        if (tokens.size() != 2)
+        {
+            cout << "usage: cd <dir>" << endl;
+        }
+        else
+        {
+            if (chdir(tokens[1].c_str()) == -1)
+            {
+                perror("chdir");
+            }
+        }
+        return 0;
 }
