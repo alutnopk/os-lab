@@ -1,170 +1,141 @@
-#include <iostream>
-#include <cstring>
-#include <vector>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <fcntl.h>
 #include <sys/wait.h>
 
 #define MAX_BUF_SIZE 128
-using namespace std;
+#define LSH_TOK_BUFSIZE 64
+#define LSH_TOK_DELIM " \t\r\n\a"
 
-vector<string> split_string(const string &input);
-void handle_pipes(const string &line, int &noOfCMDS, vector<string> &tokens);
-void handle_cmds(string line, int &tokenNos, vector<string> &toks);
-int executeCMD(vector<string> input);
-int executeExit();
-int executeCD(string cmd);
-int runExternalCMD(vector<string> toks, int noofToks, int in_fd, int out_fd);
-string trim_string(string s)
+int runCMD(char **toks, int noofToks);
+int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd);
+char **Hpipes(char *line, int *numCMD);
+char **Hcmds(char *cmd, int *tokenNos);
+char** splitPipes(char* line,int *pipeProcesses);
+void exit_error(char *s);
+
+int main(int argc, char **argv)
 {
-    int i = 0;
-    while (i < s.size() && s[i] == ' ')
-    {
-        i++;
-    }
-    s = s.substr(i);
-    i = s.size() - 1;
-    while (i >= 0 && s[i] == ' ')
-    {
-        i--;
-    }
-    s = s.substr(0, i + 1);
-    return s;
-}
 
-int main()
-{
-    while (true)
+    char *cmdline = NULL;
+    size_t n = 0;
+    char **cmds;
+    char **toks;
+    int keep_running = 1;
+    int noOfCMD = 0;
+    int nofToks = 0;
+    int status;
+    // int i;
+    // printf("\033[H\033[J"); // clear everything from the screen, move cursor to top left
+    do
     {
-        cout << "\n$ ";
-        string line;
-        int nofToks;
-
-        getline(cin, line);
-        if (line.empty())
+        cmdline = (char*)malloc(sizeof(char)*MAX_BUF_SIZE);
+        printf("\nshell> ");
+        getline(&cmdline, &n, stdin);
+        cmdline[strlen(cmdline) - 1] = '\0';
+        //printf("%s", cmdline);
+        cmds = Hpipes(cmdline, &noOfCMD);
+        printf("%d\n",noOfCMD);
+        
+        if (noOfCMD == 1)
         {
-            continue;
+            toks = Hcmds(cmdline, &nofToks);
+            // printf("%s\n",*toks);
+            if(toks != NULL && nofToks>0)
+                runCMD(toks, nofToks);
         }
-        int noCMDs;
-        vector<string> cmds, toks(MAX_BUF_SIZE);
-
-        handle_pipes(line, noCMDs, cmds);
-        // printf("%d",noCMDs);
-        // vector<string> tokens = split_string(line);
-        if (noCMDs == 1)
-        {
-            if (cmds[0][0] == 'c' && cmds[0][1] == 'd' && cmds[0][2] == ' ')
+        else if(noOfCMD>1)
+        {   
+            int fd[2];
+            int in_fd = 0;
+            int pipeerror=0;
+            for (int i = 0; i < noOfCMD-1; i++)
             {
-                executeCD(cmds[0]);
+                if(pipe(fd)==-1)
+                {
+                    pipeerror=1;
+                    break;
+                }
+                else
+                {   
+                    toks = Hcmds(cmds[i], &nofToks);
+                    if(nofToks>0)
+                    {
+                        status=runExternalCMD(toks, nofToks, in_fd, fd[1]);
+                    }
+                    else
+                    {
+                        pipeerror=1;
+                        break;
+                    }
+                    close(fd[1]);
+                    in_fd = fd[0];
+                }
             }
-            else if (cmds[0][0] == 'e' && cmds[0][1] == 'x' && cmds[0][2] == 'i' && cmds[0][3] == 't')
+            if(!pipeerror)
             {
-                executeExit();
+                toks = Hcmds(cmds[noOfCMD-1], &nofToks);
+                if(nofToks>0)
+                {
+                    status=runExternalCMD(toks, nofToks, in_fd, 1);
+                }
+                else 
+                {
+                    pipeerror=1;
+                    break;
+                }
             }
-            else 
-            {
-                runExternalCMD(cmds, cmds.size(), 0, 1);
-            }
-            handle_cmds(line, nofToks, toks);
-
-        }
-        else if(noCMDs>1)
-        {
-
             
-            runExternalCMD(cmds, cmds.size(), 0, 1);
         }
-    }
-
+        free(toks);
+        free(cmdline);
+        fflush(stdin);
+        fflush(stdout);
+    }while(status==EXIT_SUCCESS);
     return 0;
 }
 
-vector<string> split_string(const string &input)
+
+
+int runCMD(char **toks, int noofToks)
 {
-    vector<string> tokens;
-    string current_token;
-    for (char c : input)
+    char buf[MAX_BUF_SIZE];
+
+    if (strcmp(toks[0], "cd") == 0)
     {
-        if (c == ' ')
+        // printf("CD: %s",*toks);
+        if (toks[1] == NULL)
         {
-            tokens.push_back(current_token);
-            current_token.clear();
+            exit_error("No directory entered.\n");
+            return 0;
         }
-        else
+        else if (chdir(toks[1]) == -1)
         {
-            current_token += c;
+            exit_error("cd operation failed.\n");
+            return 0;
         }
     }
-    tokens.push_back(current_token);
-    return tokens;
+
+    else if (strcmp(toks[0], "pwd") == 0)
+    {
+        // printf("PWD: %s",*toks);
+        memset(buf, 0, MAX_BUF_SIZE);
+        if (getcwd(buf, MAX_BUF_SIZE) == NULL)
+            exit_error("pwd failed.\n");
+        printf("%s\n", buf);
+        return 0;
+    }
+
+    else if (toks[0] != NULL)
+    {
+        // printf("OTHER: %s",*toks);
+        return runExternalCMD(toks, noofToks, 0, 1);
+    }
 }
 
-void handle_pipes(const string &line, int &noOfCMDS, vector<string> &tokens)
-{
-    // vector<vector<string>> tokens;
-    string current_token;
-    int CMDno = 0;
-    // cout<<line<<endl;
-    tokens.push_back("");
-    for (size_t i = 0; i < line.size();)
-    {
-        if (line[i] == '|')
-        {
-            if (tokens[CMDno].empty())
-            {
-                fprintf(stderr, "Error: Syntax ERROR\n");
-                CMDno = 0;
-                // return tokens;
-            }
-            tokens.push_back("");
-            CMDno++;
-            i++;
-        }
-        else if (line[i] == '\"')
-        {
-            tokens[CMDno] += line[i];
-            i++;
-            while (line[i] != '\"' && i < line.size())
-            {
-                tokens[CMDno] += line[i];
-                i++;
-            }
-            tokens[CMDno] += line[i];
-            i++;
-        }
-        else if (line[i] == '\'')
-        {
-            tokens[CMDno] += line[i];
-            i++;
-            while (line[i] != '\'' && i < line.size())
-            {
-                tokens[CMDno] += line[i];
-                i++;
-            }
-            tokens[CMDno] += line[i];
-
-            i++;
-        }
-        else
-        {
-            tokens[CMDno] += line[i];
-            i++;
-        }
-    }
-    // noOfCMDS = CMDno+1;
-    // tokens[CMDno+1] = string(1,'\0');
-    for (int i = 0; i < tokens.size(); i++)
-    {
-        tokens[i] = trim_string(tokens[i]);
-    }
-
-    for (auto x : tokens)
-    {
-        cout << x << endl;
-    }
-    // return tokens;
-}
-int runExternalCMD(vector<string> toks, int noofToks, int in_fd, int out_fd)
+int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
 {
     pid_t ret, wret;
     // ret = fork();
@@ -185,49 +156,47 @@ int runExternalCMD(vector<string> toks, int noofToks, int in_fd, int out_fd)
             close(out_fd);
         }
         int cmmnd = 0;
-        int op = 0;
+        int op= 0;
 
         for (int i = 0; i < noofToks; i++)
         {
-            token = (char *)toks[i].c_str();
+            token = toks[i];
             if (!op)
             {
                 if (strcmp(token, "&") == 0 || strcmp(token, ">") == 0 || strcmp(token, "<") == 0)
                 {
-                    op = 1;
+                    op= 1;
                     cmmnd = i;
                 }
                 if (strcmp(token, ">") == 0)
                 {
-                    int redirect_out_fd = open(toks[i + 1].c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                    int redirect_out_fd = open(toks[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
                     dup2(redirect_out_fd, STDOUT_FILENO);
                 }
                 if (strcmp(token, "<") == 0)
                 {
-                    int redirect_in_fd = open(toks[i + 1].c_str(), O_RDONLY);
+                    int redirect_in_fd = open(toks[i + 1], O_RDONLY);
                     dup2(redirect_in_fd, STDIN_FILENO);
                 }
             }
             if (!op)
                 cmmnd = noofToks;
 
-            // char **token2 = malloc(cmmnd * sizeof(char *));
-            vector<char *> token2(cmmnd);
+            char **token2 = (char**)malloc(cmmnd * sizeof(char *));
 
-            // if (token2 == NULL)
-            // {
-            //     fprintf(stderr, "Error: allocation error\n");
-            //     exit(EXIT_FAILURE);
-            // }
+            if (token2 == NULL)
+            {
+                fprintf(stderr, "Error: allocation error\n");
+                exit(EXIT_FAILURE);
+            }
 
             int j;
             for (j = 0; j < cmmnd; j++)
             {
-                token2[j] = (char *)toks[j].c_str();
+                token2[j] = toks[j];
             }
-            token2.push_back(NULL);
-
-            if (execvp(token2[0], token2.data()) == -1)
+            token2[j] = NULL;
+            if (execvp(token2[0], token2) == -1)
             {
                 fprintf(stderr, "Error: exec failed\n");
                 exit(EXIT_FAILURE);
@@ -241,7 +210,7 @@ int runExternalCMD(vector<string> toks, int noofToks, int in_fd, int out_fd)
     }
     else
     {
-        if (toks[noofToks - 1] != "&")
+        if (strcmp(toks[noofToks-1],"&") != 0)
         {
             do
             {
@@ -253,163 +222,215 @@ int runExternalCMD(vector<string> toks, int noofToks, int in_fd, int out_fd)
     return EXIT_SUCCESS;
 }
 
-void handle_cmds(string line, int &tokenNos, vector<string> &toks)
+char **Hpipes(char *line, int *numCMD)
 {
-    tokenNos = 0;
     int bufsize = MAX_BUF_SIZE;
-    int cmdLen = line.length();
+    char **cmds = (char**)malloc(bufsize * sizeof(char *));
+    int lenofcmd = strlen(line);
+    int k=0;
+    int cmdNo = 0;
+    char p = '|';
+    char dc = '\"';
+    char sc = '\'';
+
+    
+    if (cmds==NULL)
+    {
+        fprintf(stderr, "Error: allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < bufsize; i++)
+    {
+        cmds[i] = (char*)malloc(lenofcmd * sizeof(char));
+        if (!cmds[i])
+        {
+            fprintf(stderr, "Error: allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    for (int i = 0; i < lenofcmd;)
+    {
+        
+        if (line[i] == p)
+        {
+            if (strlen(cmds[cmdNo]) <= 0)
+            {
+                fprintf(stderr, "Error: Syntax ERROR\n");
+                
+                
+                *numCMD = 0;
+                return NULL;
+            }
+            cmdNo++;
+            if (cmdNo >= bufsize)
+            {
+                bufsize += MAX_BUF_SIZE;
+                cmds = (char**)realloc(cmds, bufsize * sizeof(char *));
+                if (cmds==NULL)
+                {
+                    fprintf(stderr, "Error: allocation error\n");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            k = 0;
+            i++;
+        }
+
+        else if (line[i] == dc)
+        {
+            cmds[cmdNo][k] = line[i];
+            i++;
+            k++;
+            while (line[i] != dc && i < lenofcmd)
+            {
+                cmds[cmdNo][k] = line[i];
+                i++;
+                k++;
+            }
+            cmds[cmdNo][k] = line[i];
+            i++;
+            k++;
+        }
+
+        else if (line[i] == sc)
+        {
+            cmds[cmdNo][k] = line[i];
+            i++;
+            k++;
+            while (line[i] != sc && i < lenofcmd)
+            {
+                cmds[cmdNo][k] = line[i];
+                i++;
+                k++;
+            }
+            cmds[cmdNo][k] = line[i];
+            i++;
+            k++;
+        }
+
+        else
+        {
+            cmds[cmdNo][k] = line[i];
+            i++;
+            k++;
+        }
+        
+    }
+    *numCMD = cmdNo + 1;
+    cmds[*numCMD] = NULL;
+    return cmds;
+}
+
+char **Hcmds(char *cmd, int *tokenNos)
+{
+    *tokenNos = 0;
+    int bufsize = MAX_BUF_SIZE;
+    int cmdLen = strlen(cmd);
     int i, j, cmdNo = 0;
     char space = ' ';
     char nwl = '\n';
     char sc = '\'';
 
-    // char **tokens = malloc(bufsize * sizeof(char *));
+    char **tokens = (char**)malloc(bufsize * sizeof(char *));
 
-
-    // if (tokens == NULL)
-    // {
-    //     fprintf(stderr, "Error: allocation error\n");
-    //     exit(EXIT_FAILURE);
-    // }
-    // for (int i = 0; i < bufsize; i++)
-    // {
-    //     toks[i] = malloc(cmdLen * sizeof(char));
-    //     if (tokens[i] == NULL)
-    //     {
-    //         fprintf(stderr, "Error: allocation error\n");
-    //         exit(EXIT_FAILURE);
-    //     }
-    // }
+    if (tokens == NULL)
+    {
+        fprintf(stderr, "Error: allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+    for (int i = 0; i < bufsize; i++)
+    {
+        tokens[i] = (char*)malloc(cmdLen * sizeof(char));
+        if (tokens[i] == NULL)
+        {
+            fprintf(stderr, "Error: allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+    }
 
     for (i = 0; i < cmdLen;)
     {
-        if (line[i] == space || line[i] == '\t' || line[i] == '\a' || line[i] == '\r' || line[i] == nwl)
+        if (cmd[i] == space || cmd[i] == '\t' || cmd[i] == '\a' || cmd[i] == '\r' || cmd[i] == nwl)
         {
-            if (toks[(tokenNos)].length() > 0)
+            if (strlen(tokens[(*tokenNos)]) > 0)
             {
-                (tokenNos)++;
+                (*tokenNos)++;
             }
             cmdNo = 0;
             i++;
         }
-        else if (line[i] == '\"')
+        else if (cmd[i] == '\"')
         {
-            if (toks[(tokenNos) - 1][0] == 'a' && toks[(tokenNos) - 1][1] == 'w' && toks[(tokenNos) - 1][2] == 'k')
+            if (tokens[(*tokenNos) - 1][0] == 'a' && tokens[(*tokenNos) - 1][1] == 'w' && tokens[(*tokenNos) - 1][2] == 'k')
             {
                 fprintf(stderr, "Error: Syntax ERROR\n");
-                return;
+                return NULL;
             }
             cmdNo = 0;
             j = i + 1;
-            while (j < cmdLen && line[j] != '\"')
+            while (j < cmdLen && cmd[j] != '\"')
             {
-                toks[(tokenNos)][cmdNo] = line[j];
+                tokens[(*tokenNos)][cmdNo] = cmd[j];
                 cmdNo++;
                 j++;
             }
-            if (toks[(tokenNos)].length() > 0)
+            if (strlen(tokens[(*tokenNos)]) > 0)
             {
-                (tokenNos)++;
+                (*tokenNos)++;
             }
             cmdNo = 0;
             i = j + 1;
         }
 
-        else if (line[i] == sc)
+        else if (cmd[i] == sc)
         {
             cmdNo = 0;
             j = i + 1;
-            while (j < cmdLen && line[j] != sc)
+            while (j < cmdLen && cmd[j] != sc)
             {
-                toks[(tokenNos)][cmdNo] = line[j];
+                tokens[(*tokenNos)][cmdNo] = cmd[j];
                 cmdNo++;
                 j++;
             }
-            if (toks[(tokenNos)].length() > 0)
+            if (strlen(tokens[(*tokenNos)]) > 0)
             {
-                (tokenNos)++;
+                (*tokenNos)++;
             }
             cmdNo = 0;
             i = j + 1;
         }
         else
         {
-            toks[(tokenNos)][cmdNo] = line[i];
+            tokens[(*tokenNos)][cmdNo] = cmd[i];
             cmdNo++;
             if (i == cmdLen - 1)
             {
-                if (toks[(tokenNos)].length() > 0)
+                if (strlen(tokens[(*tokenNos)]) > 0)
                 {
-                    (tokenNos)++;
+                    (*tokenNos)++;
                 }
             }
             i++;
         }
-        // if ((tokenNos) >= bufsize)
-        // {
-        //     bufsize += MAX_BUF_SIZE;
-        //     toks = realloc(toks, bufsize * sizeof(char *));
-        //     if (!toks)
-        //     {
-        //         fprintf(stderr, "ERROR: allocation error\n");
-        //         exit(EXIT_FAILURE);
-        //     }
-        // }
-    }
-
-    return;
-}
-
-int executeCMD(string input)
-{
-    vector<char *> argv;
-    char *token = strtok(&input[0], " ");
-    while (token != NULL)
-    {
-        argv.push_back(token);
-        token = strtok(NULL, " ");
-    }
-    argv.push_back(NULL);
-
-    pid_t pid = fork();
-    if (pid == -1)
-    {
-        perror("fork");
-    }
-    else if (pid == 0)
-    {
-        execvp(argv[0], argv.data());
-        perror("execvp");
-    }
-    else
-    {
-        int status;
-        waitpid(pid, &status, 0);
-    }
-    return 0;
-}
-
-int executeExit()
-{
-    exit(0);
-}
-
-int executeCD(string cmd)
-{
-    char *line = (char *)cmd.c_str();
-    strtok(line, " "); // eat up cd
-    char *dir = strtok(NULL, "\"");
-    cout << dir << endl;
-    if (dir == NULL)
-    {
-        cout << "usage: cd <dir>" << endl;
-    }
-    else
-    {
-        if (chdir(dir) == -1)
+        if ((*tokenNos) >= bufsize)
         {
-            perror("chdir");
+            bufsize += MAX_BUF_SIZE;
+            tokens = (char**)realloc(tokens, bufsize * sizeof(char *));
+            if (!tokens)
+            {
+                fprintf(stderr, "ERROR: allocation error\n");
+                exit(EXIT_FAILURE);
+            }
         }
     }
-    return 0;
+
+    return tokens;
+}
+
+void exit_error(char *s)
+{
+    perror(s);
+    // exit(1);
 }
