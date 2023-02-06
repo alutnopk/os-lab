@@ -1,3 +1,4 @@
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -5,15 +6,14 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
+using namespace std;
 #define MAX_BUF_SIZE 128
-#define LSH_TOK_BUFSIZE 64
-#define LSH_TOK_DELIM " \t\r\n\a"
 
 int runCMD(char **toks, int noofToks);
 int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd);
 char **Hpipes(char *line, int *numCMD);
 char **Hcmds(char *cmd, int *tokenNos);
-char** splitPipes(char* line,int *pipeProcesses);
+char **splitPipes(char *line, int *pipeProcesses);
 void exit_error(char *s);
 
 int main(int argc, char **argv)
@@ -23,7 +23,6 @@ int main(int argc, char **argv)
     size_t n = 0;
     char **cmds;
     char **toks;
-    int keep_running = 1;
     int noOfCMD = 0;
     int nofToks = 0;
     int status;
@@ -31,73 +30,71 @@ int main(int argc, char **argv)
     // printf("\033[H\033[J"); // clear everything from the screen, move cursor to top left
     do
     {
-        cmdline = (char*)malloc(sizeof(char)*MAX_BUF_SIZE);
+        cmdline = (char *)malloc(sizeof(char) * MAX_BUF_SIZE);
         printf("\nshell> ");
         getline(&cmdline, &n, stdin);
         cmdline[strlen(cmdline) - 1] = '\0';
-        //printf("%s", cmdline);
+        // printf("%s", cmdline);
         cmds = Hpipes(cmdline, &noOfCMD);
-        printf("%d\n",noOfCMD);
-        
+        // printf("%d\n",noOfCMD);
+
         if (noOfCMD == 1)
         {
             toks = Hcmds(cmdline, &nofToks);
             // printf("%s\n",*toks);
-            if(toks != NULL && nofToks>0)
-                runCMD(toks, nofToks);
+            if (toks != NULL && nofToks > 0)
+                status=runCMD(toks, nofToks);
         }
-        else if(noOfCMD>1)
-        {   
+        else if (noOfCMD > 1)
+        {
             int fd[2];
             int in_fd = 0;
-            int pipeerror=0;
-            for (int i = 0; i < noOfCMD-1; i++)
+            int pipeerror = 0;
+            for (int i = 0; i < noOfCMD - 1; i++)
             {
-                if(pipe(fd)==-1)
+                if (pipe(fd) == -1)
                 {
-                    pipeerror=1;
+                    pipeerror = 1;
                     break;
                 }
                 else
-                {   
+                {
                     toks = Hcmds(cmds[i], &nofToks);
-                    if(nofToks>0)
+                    if (nofToks > 0)
                     {
-                        status=runExternalCMD(toks, nofToks, in_fd, fd[1]);
+                        status = runExternalCMD(toks, nofToks, in_fd, fd[1]);
                     }
                     else
                     {
-                        pipeerror=1;
+                        pipeerror = 1;
                         break;
                     }
                     close(fd[1]);
                     in_fd = fd[0];
                 }
             }
-            if(!pipeerror)
+            if (!pipeerror)
             {
-                toks = Hcmds(cmds[noOfCMD-1], &nofToks);
-                if(nofToks>0)
+                toks = Hcmds(cmds[noOfCMD - 1], &nofToks);
+                if (nofToks > 0)
                 {
-                    status=runExternalCMD(toks, nofToks, in_fd, 1);
+                    status = runExternalCMD(toks, nofToks, in_fd, 1);
                 }
-                else 
+                else
                 {
-                    pipeerror=1;
+                    pipeerror = 1;
                     break;
                 }
             }
-            
         }
+        
         free(toks);
         free(cmdline);
         fflush(stdin);
         fflush(stdout);
-    }while(status==EXIT_SUCCESS);
+    } while (status == EXIT_SUCCESS);
     return 0;
 }
-
-
 
 int runCMD(char **toks, int noofToks)
 {
@@ -118,16 +115,6 @@ int runCMD(char **toks, int noofToks)
         }
     }
 
-    else if (strcmp(toks[0], "pwd") == 0)
-    {
-        // printf("PWD: %s",*toks);
-        memset(buf, 0, MAX_BUF_SIZE);
-        if (getcwd(buf, MAX_BUF_SIZE) == NULL)
-            exit_error("pwd failed.\n");
-        printf("%s\n", buf);
-        return 0;
-    }
-
     else if (toks[0] != NULL)
     {
         // printf("OTHER: %s",*toks);
@@ -138,8 +125,7 @@ int runCMD(char **toks, int noofToks)
 int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
 {
     pid_t ret, wret;
-    // ret = fork();
-    // printf("%s\n",*toks);
+    
     int status;
     ret = fork();
     char *token;
@@ -156,7 +142,7 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
             close(out_fd);
         }
         int cmmnd = 0;
-        int op= 0;
+        int op = 0;
 
         for (int i = 0; i < noofToks; i++)
         {
@@ -165,42 +151,42 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
             {
                 if (strcmp(token, "&") == 0 || strcmp(token, ">") == 0 || strcmp(token, "<") == 0)
                 {
-                    op= 1;
+                    op = 1;
                     cmmnd = i;
                 }
-                if (strcmp(token, ">") == 0)
-                {
-                    int redirect_out_fd = open(toks[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                    dup2(redirect_out_fd, STDOUT_FILENO);
-                }
-                if (strcmp(token, "<") == 0)
-                {
-                    int redirect_in_fd = open(toks[i + 1], O_RDONLY);
-                    dup2(redirect_in_fd, STDIN_FILENO);
-                }
             }
-            if (!op)
-                cmmnd = noofToks;
-
-            char **token2 = (char**)malloc(cmmnd * sizeof(char *));
-
-            if (token2 == NULL)
+            if (strcmp(token, ">") == 0)
             {
-                fprintf(stderr, "Error: allocation error\n");
-                exit(EXIT_FAILURE);
+                int redirect_out_fd = open(toks[i + 1], O_CREAT | O_TRUNC | O_WRONLY, 0666);
+                dup2(redirect_out_fd, STDOUT_FILENO);
             }
+            if (strcmp(token, "<") == 0)
+            {
+                int redirect_in_fd = open(toks[i + 1], O_RDONLY);
+                dup2(redirect_in_fd, STDIN_FILENO);
+            }
+        }
+        if (!op)
+            cmmnd = noofToks;
 
-            int j;
-            for (j = 0; j < cmmnd; j++)
-            {
-                token2[j] = toks[j];
-            }
-            token2[j] = NULL;
-            if (execvp(token2[0], token2) == -1)
-            {
-                fprintf(stderr, "Error: exec failed\n");
-                exit(EXIT_FAILURE);
-            }
+        char **token2 = (char **)malloc(cmmnd * sizeof(char *));
+
+        if (token2 == NULL)
+        {
+            fprintf(stderr, "Error: allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+
+        int j;
+        for (j = 0; j < cmmnd; j++)
+        {
+            token2[j] = toks[j];
+        }
+        token2[j] = NULL;
+        if (execvp(token2[0], token2) == -1)
+        {
+            fprintf(stderr, "Error: exec failed\n");
+            exit(EXIT_FAILURE);
         }
     }
     else if (ret < 0)
@@ -210,7 +196,7 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
     }
     else
     {
-        if (strcmp(toks[noofToks-1],"&") != 0)
+        if (strcmp(toks[noofToks - 1], "&") != 0)
         {
             do
             {
@@ -225,16 +211,15 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
 char **Hpipes(char *line, int *numCMD)
 {
     int bufsize = MAX_BUF_SIZE;
-    char **cmds = (char**)malloc(bufsize * sizeof(char *));
+    char **cmds = (char **)malloc(bufsize * sizeof(char *));
     int lenofcmd = strlen(line);
-    int k=0;
+    int k = 0;
     int cmdNo = 0;
     char p = '|';
     char dc = '\"';
     char sc = '\'';
 
-    
-    if (cmds==NULL)
+    if (cmds == NULL)
     {
         fprintf(stderr, "Error: allocation error\n");
         exit(EXIT_FAILURE);
@@ -242,7 +227,7 @@ char **Hpipes(char *line, int *numCMD)
 
     for (int i = 0; i < bufsize; i++)
     {
-        cmds[i] = (char*)malloc(lenofcmd * sizeof(char));
+        cmds[i] = (char *)malloc(lenofcmd * sizeof(char));
         if (!cmds[i])
         {
             fprintf(stderr, "Error: allocation error\n");
@@ -252,14 +237,13 @@ char **Hpipes(char *line, int *numCMD)
 
     for (int i = 0; i < lenofcmd;)
     {
-        
+
         if (line[i] == p)
         {
             if (strlen(cmds[cmdNo]) <= 0)
             {
                 fprintf(stderr, "Error: Syntax ERROR\n");
-                
-                
+
                 *numCMD = 0;
                 return NULL;
             }
@@ -267,8 +251,8 @@ char **Hpipes(char *line, int *numCMD)
             if (cmdNo >= bufsize)
             {
                 bufsize += MAX_BUF_SIZE;
-                cmds = (char**)realloc(cmds, bufsize * sizeof(char *));
-                if (cmds==NULL)
+                cmds = (char **)realloc(cmds, bufsize * sizeof(char *));
+                if (cmds == NULL)
                 {
                     fprintf(stderr, "Error: allocation error\n");
                     exit(EXIT_FAILURE);
@@ -316,7 +300,6 @@ char **Hpipes(char *line, int *numCMD)
             i++;
             k++;
         }
-        
     }
     *numCMD = cmdNo + 1;
     cmds[*numCMD] = NULL;
@@ -333,7 +316,7 @@ char **Hcmds(char *cmd, int *tokenNos)
     char nwl = '\n';
     char sc = '\'';
 
-    char **tokens = (char**)malloc(bufsize * sizeof(char *));
+    char **tokens = (char **)malloc(bufsize * sizeof(char *));
 
     if (tokens == NULL)
     {
@@ -342,7 +325,7 @@ char **Hcmds(char *cmd, int *tokenNos)
     }
     for (int i = 0; i < bufsize; i++)
     {
-        tokens[i] = (char*)malloc(cmdLen * sizeof(char));
+        tokens[i] = (char *)malloc(cmdLen * sizeof(char));
         if (tokens[i] == NULL)
         {
             fprintf(stderr, "Error: allocation error\n");
@@ -417,7 +400,7 @@ char **Hcmds(char *cmd, int *tokenNos)
         if ((*tokenNos) >= bufsize)
         {
             bufsize += MAX_BUF_SIZE;
-            tokens = (char**)realloc(tokens, bufsize * sizeof(char *));
+            tokens = (char **)realloc(tokens, bufsize * sizeof(char *));
             if (!tokens)
             {
                 fprintf(stderr, "ERROR: allocation error\n");
