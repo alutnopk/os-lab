@@ -25,11 +25,12 @@ int main(int argc, char **argv)
     int keep_running = 1;
     int noOfCMD = 0;
     int nofToks = 0;
+    int status;
     // int i;
     // printf("\033[H\033[J"); // clear everything from the screen, move cursor to top left
     for (; keep_running;)
     {
-        printf("shell> ");
+        printf("\nshell> ");
         getline(&cmdline, &n, stdin);
         cmdline[strlen(cmdline) - 1] = '\0';
         cmds = Hpipes(cmdline, &noOfCMD);
@@ -38,7 +39,51 @@ int main(int argc, char **argv)
         {
             toks = Hcmds(cmdline, &nofToks);
             // printf("%s\n",*toks);
-            runCMD(toks, nofToks);
+            if(toks != NULL && nofToks>0)
+                runCMD(toks, nofToks);
+        }
+        else if(noOfCMD>1)
+        {   
+            int fd[2];
+            int in_fd = 0;
+            int pipeerror=0;
+            for (int i = 0; i < noOfCMD; i++)
+            {
+                if(pipe(fd)==-1)
+                {
+                    pipeerror=1;
+                    break;
+                }
+                else
+                {   
+                    toks = Hcmds(cmds[i], &nofToks);
+                    if(nofToks>0)
+                    {
+                        status=runExternalCMD(toks, nofToks, in_fd, fd[1]);
+                    }
+                    else
+                    {
+                        pipeerror=1;
+                        break;
+                    }
+                    close(fd[1]);
+                    in_fd = fd[0];
+                }
+            }
+            if(!pipeerror)
+            {
+                toks = Hcmds(cmds[noOfCMD-1], &nofToks);
+                if(nofToks>0)
+                {
+                    status=runExternalCMD(toks, nofToks, in_fd, 1);
+                }
+                else 
+                {
+                    pipeerror=1;
+                    break;
+                }
+            }
+
         }
         //free(toks);
         // free(cmdline);
@@ -180,7 +225,7 @@ char **Hpipes(char *line, int *numCMD)
     char dc = '\"';
     char sc = '\'';
 
-    if (!cmds)
+    if (cmds==NULL)
     {
         fprintf(stderr, "Error: allocation error\n");
         exit(EXIT_FAILURE);
@@ -198,11 +243,14 @@ char **Hpipes(char *line, int *numCMD)
 
     for (int i = 0; i < lenofcmd;)
     {
+        printf("%s\n", cmds[0]);
         if (line[i] == p)
         {
             if (strlen(cmds[cmdNo]) <= 0)
             {
                 fprintf(stderr, "Error: Syntax ERROR\n");
+                printf("Hpipes");
+                
                 *numCMD = 0;
                 return NULL;
             }
@@ -211,7 +259,7 @@ char **Hpipes(char *line, int *numCMD)
             {
                 bufsize += MAX_BUF_SIZE;
                 cmds = realloc(cmds, bufsize * sizeof(char *));
-                if (!cmds)
+                if (cmds==NULL)
                 {
                     fprintf(stderr, "Error: allocation error\n");
                     exit(EXIT_FAILURE);
@@ -261,7 +309,7 @@ char **Hpipes(char *line, int *numCMD)
         }
     }
     *numCMD = cmdNo + 1;
-    cmds[cmdNo + 1] = NULL;
+    cmds[*numCMD] = NULL;
     return cmds;
 }
 
