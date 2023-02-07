@@ -1,24 +1,51 @@
 #include <iostream>
+#include <vector>
+#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <signal.h>
 
 using namespace std;
-#define MAX_BUF_SIZE 128
+
+#define MAX_BUF_SIZE 1000
 
 int runCMD(char **toks, int noofToks);
 int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd);
 char **Hpipes(char *line, int *numCMD);
 char **Hcmds(char *cmd, int *tokenNos);
-char **splitPipes(char *line, int *pipeProcesses);
+vector<string> glob(const string &pat);
 void exit_error(char *s);
+
+bool cntrlC = 0, cntrlZ = 0;
+int currentPG = 0;
+int wildcard = 0;
+
+// void sigint_handler(int signo)
+// {
+//     // int pipidd = waitpid(0, NULL, WNOHANG);
+//     // if (pid > 0)
+//     // {
+//     //     printf("Child process %d terminated due to SIGINT\n", pid);
+//     // }
+//     // else
+//     // {
+//     //     printf("Exiting shell due to SIGINT\n");
+//     //     exit(0);
+//     // }
+//     if(signo == SIGINT)
+//     {
+//         printf("\nshell>");
+//     }
+// }
 
 int main(int argc, char **argv)
 {
-
+    // signal(SIGINT, sigint_handler);
+    // signal(SIGTSTP, sigtstp_handler);
     char *cmdline = NULL;
     size_t n = 0;
     char **cmds;
@@ -30,6 +57,7 @@ int main(int argc, char **argv)
     // printf("\033[H\033[J"); // clear everything from the screen, move cursor to top left
     do
     {
+        wildcard=0;
         cmdline = (char *)malloc(sizeof(char) * MAX_BUF_SIZE);
         printf("\nshell> ");
         getline(&cmdline, &n, stdin);
@@ -43,7 +71,7 @@ int main(int argc, char **argv)
             toks = Hcmds(cmdline, &nofToks);
             // printf("%s\n",*toks);
             if (toks != NULL && nofToks > 0)
-                status=runCMD(toks, nofToks);
+                status = runCMD(toks, nofToks);
         }
         else if (noOfCMD > 1)
         {
@@ -87,13 +115,27 @@ int main(int argc, char **argv)
                 }
             }
         }
-        
+
         free(toks);
         free(cmdline);
         fflush(stdin);
         fflush(stdout);
     } while (status == EXIT_SUCCESS);
     return 0;
+}
+
+vector<string> glob(const string &pat)
+{
+    using namespace std;
+    glob_t glob_result;
+    glob(pat.c_str(), GLOB_TILDE, NULL, &glob_result);
+    vector<string> ret;
+    for (unsigned int i = 0; i < glob_result.gl_pathc; ++i)
+    {
+        ret.push_back(string(glob_result.gl_pathv[i]));
+    }
+    globfree(&glob_result);
+    return ret;
 }
 
 int runCMD(char **toks, int noofToks)
@@ -125,8 +167,36 @@ int runCMD(char **toks, int noofToks)
 int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
 {
     pid_t ret, wret;
-    
+    vector<string> files;
     int status;
+    int i = 0;
+
+    
+    if (wildcard == 1)
+    {
+        i=0;
+        printf("wildcard is 1\n");
+        files = glob(toks[1]);
+        for(i=0;i<files.size();i++)
+        {
+            toks[i+1] = (char*)files[i].c_str();
+        }
+        noofToks = files.size()+1;    
+    }
+    
+    for(i=0;i<noofToks;i++)
+    {
+        printf("%s\n",toks[i]);
+    }
+
+    // if(wildcard != 1)
+    // {
+    //     for (int i = 0; i < noofToks; i++)
+    //     {
+    //         cout << toks[i] << endl;
+    //     }
+    // }
+    
     ret = fork();
     char *token;
     if (ret == 0)
@@ -143,6 +213,9 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
         }
         int cmmnd = 0;
         int op = 0;
+
+
+
 
         for (int i = 0; i < noofToks; i++)
         {
@@ -182,7 +255,7 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
         {
             token2[j] = toks[j];
         }
-        token2[j] = NULL;
+            token2[j] = NULL;
         if (execvp(token2[0], token2) == -1)
         {
             fprintf(stderr, "Error: exec failed\n");
@@ -194,17 +267,27 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
         fprintf(stderr, "Error: fork failed\n");
         exit(EXIT_FAILURE);
     }
-    else
-    {
-        if (strcmp(toks[noofToks - 1], "&") != 0)
-        {
-            do
-            {
-                wret = waitpid(ret, &status, WUNTRACED);
-            } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-        }
-    }
 
+    // if (current_process_group == 0)
+    //     {
+    //         current_process_group = childpid;
+    //         if (!background)
+    //         {
+    //             tcsetpgrp(STDIN_FILENO, current_process_group);
+    //             tcsetattr(STDIN_FILENO, TCSANOW, &oldtio);
+    //         }
+    //     }
+
+    if (strcmp(toks[noofToks - 1], "&") != 0)
+    {
+        // tcsetpgrp(STDIN_FILENO, getpgid(0));
+        do
+        {
+            wret = waitpid(ret, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        // tcsetpgrp(STDIN_FILENO, getpgid(0));
+    }
+    
     return EXIT_SUCCESS;
 }
 
@@ -351,6 +434,8 @@ char **Hcmds(char *cmd, int *tokenNos)
                 fprintf(stderr, "Error: Syntax ERROR\n");
                 return NULL;
             }
+            if (cmd[i] == '?' || cmd[i] == '*')
+                wildcard = 1;
             cmdNo = 0;
             j = i + 1;
             while (j < cmdLen && cmd[j] != '\"')
@@ -386,6 +471,7 @@ char **Hcmds(char *cmd, int *tokenNos)
         }
         else
         {
+            if (cmd[i] == '?' || cmd[i] == '*') wildcard = 1;
             tokens[(*tokenNos)][cmdNo] = cmd[i];
             cmdNo++;
             if (i == cmdLen - 1)
