@@ -24,27 +24,17 @@ bool cntrlC = 0, cntrlZ = 0;
 int currentPG = 0;
 int wildcard = 0;
 
-// void sigint_handler(int signo)
-// {
-//     // int pipidd = waitpid(0, NULL, WNOHANG);
-//     // if (pid > 0)
-//     // {
-//     //     printf("Child process %d terminated due to SIGINT\n", pid);
-//     // }
-//     // else
-//     // {
-//     //     printf("Exiting shell due to SIGINT\n");
-//     //     exit(0);
-//     // }
-//     if(signo == SIGINT)
-//     {
-//         printf("\nshell>");
-//     }
-// }
+void sigint_handler(int signo)
+{
+    if(signo == SIGINT)
+    {
+        //do nothing
+    }
+}
 
 int main(int argc, char **argv)
 {
-    // signal(SIGINT, sigint_handler);
+    signal(SIGINT, sigint_handler);
     // signal(SIGTSTP, sigtstp_handler);
     char *cmdline = NULL;
     size_t n = 0;
@@ -62,7 +52,7 @@ int main(int argc, char **argv)
         printf("\nshell> ");
         getline(&cmdline, &n, stdin);
         cmdline[strlen(cmdline) - 1] = '\0';
-        // printf("%s", cmdline);
+        printf("%slol", cmdline);
         cmds = Hpipes(cmdline, &noOfCMD);
         // printf("%d\n",noOfCMD);
 
@@ -184,18 +174,7 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
         noofToks = files.size()+1;    
     }
     
-    for(i=0;i<noofToks;i++)
-    {
-        printf("%s\n",toks[i]);
-    }
-
-    // if(wildcard != 1)
-    // {
-    //     for (int i = 0; i < noofToks; i++)
-    //     {
-    //         cout << toks[i] << endl;
-    //     }
-    // }
+    
     
     ret = fork();
     char *token;
@@ -261,31 +240,20 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
             fprintf(stderr, "Error: exec failed\n");
             exit(EXIT_FAILURE);
         }
+    
     }
     else if (ret < 0)
     {
         fprintf(stderr, "Error: fork failed\n");
         exit(EXIT_FAILURE);
     }
-
-    // if (current_process_group == 0)
-    //     {
-    //         current_process_group = childpid;
-    //         if (!background)
-    //         {
-    //             tcsetpgrp(STDIN_FILENO, current_process_group);
-    //             tcsetattr(STDIN_FILENO, TCSANOW, &oldtio);
-    //         }
-    //     }
-
+    
     if (strcmp(toks[noofToks - 1], "&") != 0)
     {
-        // tcsetpgrp(STDIN_FILENO, getpgid(0));
         do
         {
             wret = waitpid(ret, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-        // tcsetpgrp(STDIN_FILENO, getpgid(0));
     }
     
     return EXIT_SUCCESS;
