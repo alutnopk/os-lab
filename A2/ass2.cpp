@@ -6,34 +6,54 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #include <sys/wait.h>
 #include <signal.h>
 
 using namespace std;
 
-#define MAX_BUF_SIZE 1000
+#define MAX_BUF_SIZE 128
 
 int runCMD(char **toks, int noofToks);
 int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd);
 char **Hpipes(char *line, int *numCMD);
 char **Hcmds(char *cmd, int *tokenNos);
 vector<string> glob(const string &pat);
-void exit_error(char *s);
+int executeCd(char** toks);
+int exit_error(char **s);
 
 bool cntrlC = 0, cntrlZ = 0;
 int currentPG = 0;
 int wildcard = 0;
+char homeDir[MAX_BUF_SIZE];
+
+char* builtIns[] = {
+    (char*)"cd",
+    (char*)"exit",
+};
+
+int (*builtInFuncs[])(char**)=
+{
+    &executeCd,
+    &exit_error
+
+};
 
 void sigint_handler(int signo)
 {
-    if(signo == SIGINT)
+    if (signo == SIGINT)
     {
-        //do nothing
+        // do nothing
     }
 }
 
 int main(int argc, char **argv)
 {
+    getcwd(homeDir, MAX_BUF_SIZE);
+    //printf("%s",homeDir);
+    strcat(homeDir,"/history.txt");
+    read_history(homeDir);
     signal(SIGINT, sigint_handler);
     // signal(SIGTSTP, sigtstp_handler);
     char *cmdline = NULL;
@@ -47,12 +67,19 @@ int main(int argc, char **argv)
     // printf("\033[H\033[J"); // clear everything from the screen, move cursor to top left
     do
     {
-        wildcard=0;
-        cmdline = (char *)malloc(sizeof(char) * MAX_BUF_SIZE);
-        printf("\nshell> ");
-        getline(&cmdline, &n, stdin);
-        cmdline[strlen(cmdline) - 1] = '\0';
-        printf("%slol", cmdline);
+        wildcard = 0;
+
+        // cmdline = (char *)malloc(sizeof(char) * MAX_BUF_SIZE);
+        // printf("\nshell> ");
+        // getline(&cmdline, &n, stdin);
+        // cmdline[strlen(cmdline) - 1] = '\0';
+        //printf("%slol", cmdline);
+
+        cmdline = readline("\nshell>");
+        printf("%s\n", cmdline);
+
+        add_history(cmdline);
+        write_history(homeDir);
         cmds = Hpipes(cmdline, &noOfCMD);
         // printf("%d\n",noOfCMD);
 
@@ -105,13 +132,13 @@ int main(int argc, char **argv)
                 }
             }
         }
-
         free(toks);
         free(cmdline);
         fflush(stdin);
         fflush(stdout);
     } while (status == EXIT_SUCCESS);
     return 0;
+    
 }
 
 vector<string> glob(const string &pat)
@@ -130,56 +157,49 @@ vector<string> glob(const string &pat)
 
 int runCMD(char **toks, int noofToks)
 {
-    char buf[MAX_BUF_SIZE];
-
-    if (strcmp(toks[0], "cd") == 0)
+    if(toks[0]==NULL) 
     {
-        // printf("CD: %s",*toks);
-        if (toks[1] == NULL)
-        {
-            exit_error("No directory entered.\n");
-            return 0;
-        }
-        else if (chdir(toks[1]) == -1)
-        {
-            exit_error("cd operation failed.\n");
-            return 0;
-        }
+        return EXIT_SUCCESS;
     }
-
-    else if (toks[0] != NULL)
+    else
     {
-        // printf("OTHER: %s",*toks);
-        return runExternalCMD(toks, noofToks, 0, 1);
+        for(int i=0;i<2;i++)
+        {
+            if(strcmp(toks[0],builtIns[i])==0)
+            {
+                return (*builtInFuncs[i])(toks);
+            }
+        }
+            // printf("OTHER: %s",*toks);
+        return runExternalCMD(toks, noofToks, 0, 1);    
     }
+    
 }
 
 int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
 {
     pid_t ret, wret;
-    vector<string> files;
+    
     int status;
     int i = 0;
-
-    
-    if (wildcard == 1)
-    {
-        i=0;
-        printf("wildcard is 1\n");
-        files = glob(toks[1]);
-        for(i=0;i<files.size();i++)
-        {
-            toks[i+1] = (char*)files[i].c_str();
-        }
-        noofToks = files.size()+1;    
-    }
-    
-    
-    
     ret = fork();
     char *token;
+    
     if (ret == 0)
     {
+        
+        if (wildcard == 1)
+        {
+            vector<string> files;
+            i = 0;
+            printf("wildcard is 1\n");
+            files = glob(toks[1]);
+            for (i = 0; i < files.size(); i++)
+            {
+                toks[i + 1] = (char *)files[i].c_str();
+            }
+            noofToks = files.size() + 1;
+        }
         if (in_fd != 0)
         {
             dup2(in_fd, 0);
@@ -192,9 +212,6 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
         }
         int cmmnd = 0;
         int op = 0;
-
-
-
 
         for (int i = 0; i < noofToks; i++)
         {
@@ -221,7 +238,7 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
         if (!op)
             cmmnd = noofToks;
 
-        char **token2 = (char **)malloc(cmmnd * sizeof(char *));
+        char **token2 = (char **)malloc((cmmnd+1) * sizeof(char *));
 
         if (token2 == NULL)
         {
@@ -234,20 +251,19 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
         {
             token2[j] = toks[j];
         }
-            token2[j] = NULL;
+        token2[j] = NULL;
         if (execvp(token2[0], token2) == -1)
         {
             fprintf(stderr, "Error: exec failed\n");
             exit(EXIT_FAILURE);
         }
-    
     }
     else if (ret < 0)
     {
         fprintf(stderr, "Error: fork failed\n");
         exit(EXIT_FAILURE);
     }
-    
+
     if (strcmp(toks[noofToks - 1], "&") != 0)
     {
         do
@@ -255,7 +271,7 @@ int runExternalCMD(char **toks, int noofToks, int in_fd, int out_fd)
             wret = waitpid(ret, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -265,10 +281,11 @@ char **Hpipes(char *line, int *numCMD)
     char **cmds = (char **)malloc(bufsize * sizeof(char *));
     int lenofcmd = strlen(line);
     int k = 0;
+    *numCMD = 0;
     int cmdNo = 0;
-    char p = '|';
-    char dc = '\"';
-    char sc = '\'';
+    unsigned char p = '|';
+    unsigned char dc = '\"';
+    unsigned char sc = '\'';
 
     if (cmds == NULL)
     {
@@ -439,7 +456,8 @@ char **Hcmds(char *cmd, int *tokenNos)
         }
         else
         {
-            if (cmd[i] == '?' || cmd[i] == '*') wildcard = 1;
+            if (cmd[i] == '?' || cmd[i] == '*')
+                wildcard = 1;
             tokens[(*tokenNos)][cmdNo] = cmd[i];
             cmdNo++;
             if (i == cmdLen - 1)
@@ -466,8 +484,24 @@ char **Hcmds(char *cmd, int *tokenNos)
     return tokens;
 }
 
-void exit_error(char *s)
+int executeCd(char** toks)
 {
-    perror(s);
-    // exit(1);
+    
+    if(toks[1]==NULL)
+    {
+        printf("Error: no directory given\n");
+    }
+    else
+    {
+        if(chdir(toks[1])!=0)
+        {
+            printf("Error: directory not found\n");
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
+int exit_error(char **s)
+{
+    return 1;
 }
