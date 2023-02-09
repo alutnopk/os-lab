@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <glob.h>
+#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -50,10 +51,12 @@ void sigint_handler(int signo)
 
 int main(int argc, char **argv)
 {
+    
+    ofstream file2;
+    file2.open("history.txt", ios::app | ios::out);
     getcwd(homeDir, MAX_BUF_SIZE);
-    //printf("%s",homeDir);
     strcat(homeDir,"/history.txt");
-    read_history(homeDir);
+    read_history("history.txt");
     signal(SIGINT, sigint_handler);
     // signal(SIGTSTP, sigtstp_handler);
     char *cmdline = NULL;
@@ -63,30 +66,24 @@ int main(int argc, char **argv)
     int noOfCMD = 0;
     int nofToks = 0;
     int status;
-    // int i;
-    // printf("\033[H\033[J"); // clear everything from the screen, move cursor to top left
+
     do
     {
         wildcard = 0;
 
-        // cmdline = (char *)malloc(sizeof(char) * MAX_BUF_SIZE);
-        // printf("\nshell> ");
-        // getline(&cmdline, &n, stdin);
-        // cmdline[strlen(cmdline) - 1] = '\0';
-        //printf("%slol", cmdline);
-
         cmdline = readline("\nshell>");
-        printf("%s\n", cmdline);
 
-        add_history(cmdline);
-        write_history(homeDir);
         cmds = Hpipes(cmdline, &noOfCMD);
-        // printf("%d\n",noOfCMD);
+        if(file2.is_open())
+        {
+            file2 << cmdline << endl;
+        }
+
 
         if (noOfCMD == 1)
         {
             toks = Hcmds(cmdline, &nofToks);
-            // printf("%s\n",*toks);
+
             if (toks != NULL && nofToks > 0)
                 status = runCMD(toks, nofToks);
         }
