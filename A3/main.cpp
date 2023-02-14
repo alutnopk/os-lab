@@ -23,7 +23,7 @@ int main()
     mem = (int*)shmat(shmid, NULL, 0);
     if(!mem){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
-    cout<<"Shared memory segment successfuly created."<<endl;
+    cout<<"Shared memory segment successfully created."<<endl;
     // open initial graph file and store into mem
     /*
         Representation of the graph:-
