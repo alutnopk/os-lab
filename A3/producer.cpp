@@ -6,9 +6,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <string>
-#include <string.h>
+#include <cstring>
 #include <sstream>
-#include <sys/wait.h>
 using namespace std;
 
 #define SHMSIZE 4294967296
@@ -26,10 +25,10 @@ typedef struct AdjList
 class Graph
 {
     
+    public:
     int nodeCount;
     AdjList nodelist[MAXCOUNT];
     // constructor, destructor
-    public:
     Graph()
     {
         this->nodeCount = 0;
@@ -80,8 +79,7 @@ int Graph::init(string filepath)
                 nodelist[iy].neighborCount += 1;
                 if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
                 x_repeated:
-                // cout<<endl;
-                int x=0;
+                cout<<endl;
             }
             else if(ix>=0 && iy==-1) // x found but not y
             {
@@ -143,51 +141,20 @@ void Graph::show()
     }
     // MyFile.close();
 }
-int main()
-{   
-    int shmid;
+int main(int argc, char** argv)
+{
+    int shmid = atoi(argv[1]);
     Graph *gptr;
-
-    // create System V shared memory segment
-    shmid = shmget(IPC_PRIVATE, SHMSIZE, IPC_CREAT | 0666);
-    if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
+    cout<<"Producer begins."<<endl;
+    // get System V shared memory segment
+    // shmid = shmget(SHMKEY, SHMSIZE, IPC_CREAT | 0666);
+    // if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
     cout<<shmid<<endl;
     // attach shared memory segment to address space of main process
     gptr = (Graph*)shmat(shmid, NULL, 0);
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
-
-    cout<<"Shared memory segment successfully created."<<endl;
-    // cout<<sizeof(Graph)<<endl;
-    if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
-    cout<<"Graph successfully stored."<<endl;
+    cout<<gptr->nodeCount<<endl;
     // gptr->show();
-
-    if(fork() == 0) // producer process
-    {
-            cout<<"Producer forked."<<endl;
-            char *temp; sprintf(temp, "%d", shmid);
-            execlp("./producer", "./producer", temp, NULL);
-            cerr<<"ERROR: Failure in forking producer."<<endl;
-            exit(1);
-    }
-    // pid ret = wait(NULL);
-    // cout<<"Child "<<ret<<" exit successful"<<endl;
-    for(int i=0; i<10; i++)
-    {
-        cout<<"Consumer "<<i+1<<" forked."<<endl;
-        
-    }
-    // pid_t cp = fork();
-    // if(cp == 0)
-    // {
-    //     //consumer process
-    //     sleep(30);
-    // }
-
-
-    // Detach shared memory segment
     shmdt(gptr);
-    // Mark the segment to be destroyed
-    shmctl(shmid, IPC_RMID, NULL);
     return 0;
 }

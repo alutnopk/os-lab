@@ -3,3 +3,5 @@ foo.*
 foo
 a.out
 main
+producer
+consumer
