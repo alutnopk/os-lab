@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
@@ -146,7 +147,7 @@ int main()
     Graph *gptr;
 
     // create System V shared memory segment
-    shmid = shmget(SHMKEY, SHMSIZE, IPC_CREAT | 0666);
+    shmid = shmget(IPC_PRIVATE, SHMSIZE, IPC_CREAT | 0666);
     if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
 
     // attach shared memory segment to address space of main process
@@ -158,7 +159,7 @@ int main()
     if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     // if(gptr->init("text.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     cout<<"Graph successfully stored."<<endl;
-    gptr->show();
+    // gptr->show();
 
     // open initial graph file and store into gptr
     /*
@@ -169,15 +170,24 @@ int main()
         finally, the two entries after the last edge are -1 and -1 (to indicate end of representation)
     */
 
-    // test printing the edges of the graph
-    // int i = 2;
-    // do
-    // {
-    //     cout<<gptr[i]<<" "<<gptr[i+1]<<endl;
-    //     i += 2;
-    // } while(gptr[i] != -1 && gptr[i+1] != -1);
+    pid_t pp = fork();
+    pid_t cp;
+    if(pp == 0)
+    {
+        //producer process
+        sleep(50); 
+    }
+    else
+    {
+        //main process
+        cp = fork();
+        if(cp == 0)
+        {
+            //consumer process
+            sleep(30);
+        }
+    }
 
-    // This is where child processes shall be spawned which inherit the shared memory
 
     // Detach shared memory segment
     shmdt(gptr);
