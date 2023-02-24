@@ -125,12 +125,20 @@ int Graph::init(string filepath)
 void Graph::show()
 {
     cout<<"Total Nodes: "<<nodeCount<<endl;
+    // ofstream MyFile("output.txt");
     for(int i=0; i<nodeCount; i++)
     {
+        // MyFile << nodelist[i].current<<":";
         cout<<nodelist[i].current<<":";
-        for(int j=0; j<nodelist[i].neighborCount; j++) cout<<nodelist[i].neighborlist[j]<< " ";
+        for(int j=0; j<nodelist[i].neighborCount; j++) 
+        {
+            // MyFile<<nodelist[i].neighborlist[j]<< " ";
+            cout<<nodelist[i].neighborlist[j]<< " ";
+        }
+        // MyFile<<endl;
         cout<<endl;
     }
+    // MyFile.close();
 }
 int main()
 {   
