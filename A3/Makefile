@@ -1,6 +1,8 @@
 producer: producer.cpp
 	g++ producer.cpp -o producer
-main: main.cpp producer
+consumer: consumer.cpp
+	g++ consumer.cpp -o consumer
+main: main.cpp producer consumer
 	g++ main.cpp -o main
 run: main
 	./main

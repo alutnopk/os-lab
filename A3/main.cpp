@@ -162,21 +162,35 @@ int main()
     cout<<"Graph successfully stored."<<endl;
     // gptr->show();
 
+    char *temp = (char*)malloc(10*sizeof(char));
+    char *temp2 = (char*)malloc(2*sizeof(char));
+    snprintf(temp, 10, "%d", shmid);
     if(fork() == 0) // producer process
     {
             cout<<"Producer forked."<<endl;
-            char *temp; sprintf(temp, "%d", shmid);
             execlp("./producer", "./producer", temp, NULL);
             cerr<<"ERROR: Failure in forking producer."<<endl;
             exit(1);
     }
+    wait(NULL);
     // pid ret = wait(NULL);
     // cout<<"Child "<<ret<<" exit successful"<<endl;
     for(int i=0; i<10; i++)
     {
-        cout<<"Consumer "<<i+1<<" forked."<<endl;
-        
+        snprintf(temp2, 2, "%d", i);
+        if(fork() == 0)
+        {
+            // cout<<"Consumer "<<i+1<<" forked."<<endl;
+            cout<<temp<<" "<<temp2<<endl;
+            execlp("./consumer", "./consumer", temp, temp2, NULL);
+            cerr<<"ERROR: Failure in forking consumer."<<endl;
+            exit(1);
+        }
+        wait(NULL);
+        memset(temp2, 0, sizeof(temp2));
     }
+    free(temp);
+    free(temp2);
     // pid_t cp = fork();
     // if(cp == 0)
     // {
