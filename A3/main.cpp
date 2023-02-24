@@ -81,7 +81,7 @@ int Graph::init(string filepath)
                 if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
                 x_repeated:
                 // cout<<endl;
-                int x=0;
+                int abc=0;
             }
             else if(ix>=0 && iy==-1) // x found but not y
             {
