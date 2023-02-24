@@ -9,7 +9,7 @@
 #include <sstream>
 using namespace std;
 
-#define SHMSIZE 1048576
+#define SHMSIZE 4294967296
 #define SHMKEY 17
 #define MAXCOUNT 8192
 
@@ -23,10 +23,11 @@ typedef struct AdjList
 
 class Graph
 {
-    public:
+    
     int nodeCount;
     AdjList nodelist[MAXCOUNT];
     // constructor, destructor
+    public:
     Graph()
     {
         this->nodeCount = 0;
@@ -45,7 +46,7 @@ int Graph::init(string filepath)
     if(fs.is_open())
     {
         string lin;
-        int x, y, idx=2;
+        int x, y;
         while(getline(fs, lin)) // store graph edges as pairs of vertices starting from index 2
         {
             stringstream slin(lin);
@@ -127,7 +128,7 @@ void Graph::show()
     for(int i=0; i<nodeCount; i++)
     {
         cout<<nodelist[i].current<<":";
-        for(int j=0; j<nodelist[i].neighborCount; j++) cout<<nodelist[i].neighborlist[j];
+        for(int j=0; j<nodelist[i].neighborCount; j++) cout<<nodelist[i].neighborlist[j]<< " ";
         cout<<endl;
     }
 }
@@ -145,8 +146,9 @@ int main()
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
     cout<<"Shared memory segment successfully created."<<endl;
-
+    // cout<<sizeof(Graph)<<endl;
     if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
+    // if(gptr->init("text.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     cout<<"Graph successfully stored."<<endl;
     gptr->show();
 
