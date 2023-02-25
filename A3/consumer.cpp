@@ -145,17 +145,17 @@ int main(int argc, char** argv)
 {
     int shmid = atoi(argv[1]), idx = atoi(argv[2]);
     Graph *gptr;
-    cout<<"Consumer "<< idx <<" begins."<<endl;
+    cout<<"\x1b[33;1m"<<"Consumer "<< idx <<" begins."<<"\x1b[0m"<<endl;
     // get System V shared memory segment`
     // shmid = shmget(SHMKEY, SHMSIZE, IPC_CREAT | 0666);
     // if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
-    cout<<"shmid: "<<shmid<<endl;
+    cout<<"\x1b[33;1m"<<"shmid: "<<shmid<<"\x1b[0m"<<endl;
     // attach shared memory segment to address space of main process
     gptr = (Graph*)shmat(shmid, NULL, 0);
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
-    cout<<"Node count: "<<gptr->nodeCount<<endl;
+    cout<<"\x1b[33;1m"<<"Node count: "<<gptr->nodeCount<<"\x1b[0m"<<endl;
     // gptr->show();
     shmdt(gptr);
-    cout<<"Consumer "<< idx <<" ends."<<endl;
+    cout<<"\x1b[33;1m"<<"Consumer "<< idx <<" ends."<<"\x1b[0m"<<endl;
     return 0;
 }

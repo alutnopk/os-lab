@@ -178,7 +178,7 @@ int main()
     for(int i=0; i<10; i++)
     {
         snprintf(temp2, 2, "%d", i);
-        if(fork() == 0)
+        if(fork() == 0) // Consumder process
         {
             // cout<<"Consumer "<<i+1<<" forked."<<endl;
             cout<<temp<<" "<<temp2<<endl;
