@@ -14,6 +14,7 @@ using namespace std;
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
+#define TIMEOUT 2
 
 void* global_gptr;
 typedef struct AdjList
@@ -81,7 +82,7 @@ int Graph::init(string filepath)
                 nodelist[iy].neighborCount += 1;
                 if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
                 x_repeated:
-                cout<<endl;
+                ;
             }
             else if(ix>=0 && iy==-1) // x found but not y
             {
@@ -169,24 +170,24 @@ int main(int argc, char** argv)
     color();
     cout<<"Consumer "<< idx+1 <<" begins."<<endl;
 
-    cout<<"shmid: "<<shmid<<endl;
+    // cout<<"shmid: "<<shmid<<endl;
     uncolor();
     // attach shared memory segment to address space of main process
     global_gptr = shmat(shmid, NULL, 0);
     gptr = (Graph*)global_gptr;
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
-    color();
-    cout<<"Node count: "<<gptr->nodeCount<<endl;
-    uncolor();
+    // color();
+    // cout<<"Node count: "<<gptr->nodeCount<<endl;
+    // uncolor();
     // gptr->show();
     for(;1;)
     {
         // this is where dijkstra is run
         color();
-        cout<<"Consumer "<<idx+1<<" running Dijkstra."<<endl;
+        // cout<<"Consumer "<<idx+1<<" running Dijkstra."<<endl;
         uncolor();
-        sleep(2);
+        sleep(TIMEOUT);
     }
 
     shmdt(gptr);

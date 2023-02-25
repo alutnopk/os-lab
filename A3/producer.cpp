@@ -15,6 +15,7 @@ using namespace std;
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
+#define TIMEOUT 2
 
 void* global_gptr;
 typedef struct AdjList
@@ -38,7 +39,9 @@ class Graph
         for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
     }
     int init(string filepath);
+    int addEdge(int x, int y);
     void show();
+    void show(int n);
 };
 
 int Graph::init(string filepath)
@@ -125,12 +128,99 @@ int Graph::init(string filepath)
     }
     return 0;
 }
+int Graph::addEdge(int x, int y)
+{
+    int ix = -1, iy = -1;
+    for(int i=0; i<nodeCount; i++)
+    {
+        if(nodelist[i].current == x) ix = i;
+        if(nodelist[i].current == y) iy = i;
+        if(ix>=0 && iy>=0) break;
+    }
+    if(ix>=0 && iy>=0) // if both x,y are old nodes
+    {
+        // add y into x list only if y not found
+        for(int j=0; j<nodelist[ix].neighborCount; j++) // iterate through neighbors of x
+            if(nodelist[ix].neighborlist[j] == y) goto y_repeated; // if y already found, skip addition step
+        // else add y as neighbor
+        nodelist[ix].neighborlist[nodelist[ix].neighborCount] = y;
+        nodelist[ix].neighborCount += 1;
+        if(nodelist[ix].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
+        y_repeated:
+
+        // add x into y list only if x not found
+        for(int j=0; j<nodelist[iy].neighborCount; j++) // iterate through neighbors of y
+            if(nodelist[iy].neighborlist[j] == x) goto x_repeated; // if x already found, skip addition step
+        // else add x as neighbor
+        nodelist[iy].neighborlist[nodelist[iy].neighborCount] = x;
+        nodelist[iy].neighborCount += 1;
+        if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
+        x_repeated:
+        ;
+    }
+    else if(ix>=0 && iy==-1) // x found but not y
+    {
+        // add y to x list
+        nodelist[ix].neighborlist[nodelist[ix].neighborCount] = y;
+        nodelist[ix].neighborCount += 1;
+        if(nodelist[ix].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
+        // init y list
+        nodelist[nodeCount].current = y;
+        nodelist[nodeCount].neighborlist[0] = x;
+        nodelist[nodeCount].neighborCount = 1;
+        nodeCount++;
+    }
+    else if(ix==-1 && iy>=0) // x is new node, not y
+    {
+        // add x to y list
+        nodelist[iy].neighborlist[nodelist[iy].neighborCount] = x;
+        nodelist[iy].neighborCount += 1;
+        if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
+        // init x list
+        nodelist[nodeCount].current = x;
+        nodelist[nodeCount].neighborlist[0] = y;
+        nodelist[nodeCount].neighborCount = 1;
+        nodeCount++;
+    }
+    else // both new nodes
+    {
+        // init x list
+        nodelist[nodeCount].current = x;
+        nodelist[nodeCount].neighborlist[0] = y;
+        nodelist[nodeCount].neighborCount = 1;
+        nodeCount++;
+        // init y list
+        nodelist[nodeCount].current = y;
+        nodelist[nodeCount].neighborlist[0] = x;
+        nodelist[nodeCount].neighborCount = 1;
+        nodeCount++;
+    }
+    return 0;
+}
 
 void Graph::show()
 {
     cout<<"Total Nodes: "<<nodeCount<<endl;
     // ofstream MyFile("output.txt");
     for(int i=0; i<nodeCount; i++)
+    {
+        // MyFile << nodelist[i].current<<":";
+        cout<<nodelist[i].current<<":";
+        for(int j=0; j<nodelist[i].neighborCount; j++) 
+        {
+            // MyFile<<nodelist[i].neighborlist[j]<< " ";
+            cout<<nodelist[i].neighborlist[j]<< " ";
+        }
+        // MyFile<<endl;
+        cout<<endl;
+    }
+    // MyFile.close();
+}
+void Graph::show(int n)
+{
+    cout<<"Total Nodes: "<<nodeCount<<endl;
+    // ofstream MyFile("output.txt");
+    for(int i=n; i<nodeCount; i++)
     {
         // MyFile << nodelist[i].current<<":";
         cout<<nodelist[i].current<<":";
@@ -170,7 +260,7 @@ int main(int argc, char** argv)
 
     color();
     cout<<"Producer begins."<<endl;
-    cout<<shmid<<endl;
+    // cout<<shmid<<endl;
     uncolor();
 
     // attach shared memory segment to address space of main process
@@ -178,19 +268,42 @@ int main(int argc, char** argv)
     gptr = (Graph*)global_gptr;
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
     color();
-    cout<<gptr->nodeCount<<endl;
+    // cout<<gptr->nodeCount<<endl;
     uncolor();
     // gptr->show();
-    default_random_engine dre;
+    random_device dre;
     mt19937 gen(dre());
+    uniform_int_distribution<> distm(10,30);
+    uniform_int_distribution<> distk(1,20);
+    vector<int> weights;
     for(;1;)
     {
         // this is where new nodes are added
+        int m = distm(gen), k = distk(gen);
+        // create m new nodes
+        int oldCount = gptr->nodeCount;
+        weights.clear();
+        for(int i=0; i<oldCount; i++)
+        {
+            // retrieve 
+            gptr->nodelist[i].neighborCount;
+            weights.push_back(gptr->nodelist[i].neighborCount);
+        }
+        for(int i=oldCount; i<oldCount+m; i++) // we assume that nodes are sequentially numbered
+        {
+            int x = i, y = -1;
+            discrete_distribution<> disty(weights.begin(), weights.end()); // TODO: add weighted random choices
+            for(int j=0; j<k; j++)
+            {
+                y = disty(gen); // random == distinct?
+                gptr->addEdge(x, y);
+            }
+        }
         color();
-        cout<<gen()<<endl;
+        cout<<endl<<m<<" new nodes added ["<<gptr->nodelist[oldCount].current<<" - "<<gptr->nodelist[oldCount+m-1].current<<"] with "<<k<<" neighbors each."<<endl;
+        cout<<"New node count: "<<gptr->nodeCount<<endl;
         uncolor();
-        sleep(2);
+        sleep(TIMEOUT);
     }
-
     return 0;
 }

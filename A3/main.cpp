@@ -80,8 +80,7 @@ int Graph::init(string filepath)
                 nodelist[iy].neighborCount += 1;
                 if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
                 x_repeated:
-                // cout<<endl;
-                int abc=0;
+                ;
             }
             else if(ix>=0 && iy==-1) // x found but not y
             {
@@ -184,7 +183,7 @@ int main()
         if(conpid[i] = (fork()) == 0) // Consumer process
         {
             // cout<<"Consumer "<<i+1<<" forked."<<endl;
-            cout<<temp<<" "<<temp2<<endl;
+            // cout<<temp<<" "<<temp2<<endl;
             execlp("./consumer", "./consumer", temp, temp2, NULL);
             cerr<<"ERROR: Failure in forking consumer."<<endl;
             exit(1);
