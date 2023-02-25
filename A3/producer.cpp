@@ -8,12 +8,15 @@
 #include <string>
 #include <cstring>
 #include <sstream>
+#include <sys/wait.h>
+#include <random>
 using namespace std;
 
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
 
+void* global_gptr;
 typedef struct AdjList
 {
     public:
@@ -141,20 +144,53 @@ void Graph::show()
     }
     // MyFile.close();
 }
+void color()
+{
+    cout<<"\x1b[35;1m";
+}
+void uncolor()
+{
+    cout<<"\x1b[0m";
+}
+void ctrlc_handler(int signum)
+{
+    uncolor();
+    cout<<endl<<"Producer process terminated."<<endl;
+    shmdt(global_gptr);
+    exit(0);
+}
 int main(int argc, char** argv)
 {
+    struct sigaction act;
+    act.sa_handler = &ctrlc_handler;
+    sigaction(SIGINT, (const struct sigaction *)&act, NULL);
+    
     int shmid = atoi(argv[1]);
     Graph *gptr;
-    cout<<"\x1b[35;1m"<<"Producer begins."<<"\x1b[0m"<<endl;
-    // get System V shared memory segment
-    // shmid = shmget(SHMKEY, SHMSIZE, IPC_CREAT | 0666);
-    // if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
-    cout<<"\x1b[35;1m"<<shmid<<"\x1b[0m"<<endl;
+
+    color();
+    cout<<"Producer begins."<<endl;
+    cout<<shmid<<endl;
+    uncolor();
+
     // attach shared memory segment to address space of main process
-    gptr = (Graph*)shmat(shmid, NULL, 0);
+    global_gptr = shmat(shmid, NULL, 0);
+    gptr = (Graph*)global_gptr;
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
-    cout<<"\x1b[35;1m"<<gptr->nodeCount<<"\x1b[0m"<<endl;
+    color();
+    cout<<gptr->nodeCount<<endl;
+    uncolor();
     // gptr->show();
-    shmdt(gptr);
+    default_random_engine dre;
+    mt19937 gen(dre());
+    for(;1;)
+    {
+        // this is where new nodes are added
+        color();
+        cout<<gen()<<endl;
+        uncolor();
+        sleep(2);
+    }
+
     return 0;
 }

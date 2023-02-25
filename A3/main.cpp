@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <string>
-#include <string.h>
+#include <cstring>
 #include <sstream>
 #include <sys/wait.h>
 using namespace std;
@@ -145,9 +145,14 @@ void Graph::show()
 }
 int main()
 {   
+    struct sigaction act;
+    act.sa_handler = SIG_IGN;
+    sigaction(SIGINT, (const struct sigaction *)&act, NULL);
+    
     int shmid;
     Graph *gptr;
-
+    pid_t prodpid;
+    pid_t conpid[10];
     // create System V shared memory segment
     shmid = shmget(IPC_PRIVATE, SHMSIZE, IPC_CREAT | 0666);
     if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
@@ -165,20 +170,18 @@ int main()
     char *temp = (char*)malloc(10*sizeof(char));
     char *temp2 = (char*)malloc(2*sizeof(char));
     snprintf(temp, 10, "%d", shmid);
-    if(fork() == 0) // producer process
+    if((prodpid = fork()) == 0) // producer process
     {
             cout<<"Producer forked."<<endl;
             execlp("./producer", "./producer", temp, NULL);
             cerr<<"ERROR: Failure in forking producer."<<endl;
             exit(1);
     }
-    wait(NULL);
-    // pid ret = wait(NULL);
-    // cout<<"Child "<<ret<<" exit successful"<<endl;
+    // wait(NULL);
     for(int i=0; i<10; i++)
     {
         snprintf(temp2, 2, "%d", i);
-        if(fork() == 0) // Consumder process
+        if(conpid[i] = (fork()) == 0) // Consumer process
         {
             // cout<<"Consumer "<<i+1<<" forked."<<endl;
             cout<<temp<<" "<<temp2<<endl;
@@ -186,22 +189,27 @@ int main()
             cerr<<"ERROR: Failure in forking consumer."<<endl;
             exit(1);
         }
-        wait(NULL);
+        // wait(NULL);
         memset(temp2, 0, sizeof(temp2));
     }
     free(temp);
     free(temp2);
-    // pid_t cp = fork();
-    // if(cp == 0)
-    // {
-    //     //consumer process
-    //     sleep(30);
-    // }
 
-
+    // sleep(10);
     // Detach shared memory segment
     shmdt(gptr);
     // Mark the segment to be destroyed
     shmctl(shmid, IPC_RMID, NULL);
+
+    // cout<<"My PGID is "<<getpgrp()<<endl;
+    // if(kill(prodpid, SIGKILL) == -1) { cerr<<"ERROR: Unable to kill producer process."<<endl; return 1; }
+    // killpg(getpgrp(), SIGKILL);
+    // kill(0, SIGKILL);
+
+    
+    int *wstatus;
+    waitpid(prodpid, wstatus, WUNTRACED);
+    for(int i=0; i<10; i++) waitpid(conpid[i], wstatus, WUNTRACED);
+    cout<<"Also I'm not dead :D"<<endl;
     return 0;
 }

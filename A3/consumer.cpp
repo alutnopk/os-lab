@@ -8,12 +8,14 @@
 #include <string>
 #include <cstring>
 #include <sstream>
+#include <sys/wait.h>
 using namespace std;
 
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
 
+void* global_gptr;
 typedef struct AdjList
 {
     public:
@@ -141,21 +143,55 @@ void Graph::show()
     }
     // MyFile.close();
 }
+void color()
+{
+    cout<<"\x1b[33;1m";
+}
+void uncolor()
+{
+    cout<<"\x1b[0m";
+}
+void ctrlc_handler(int signum)
+{
+    uncolor();
+    cout<<endl<<"Consumer process terminated."<<endl;
+    shmdt(global_gptr);
+    exit(0);
+}
 int main(int argc, char** argv)
 {
+    struct sigaction act;
+    act.sa_handler = &ctrlc_handler;
+    sigaction(SIGINT, (const struct sigaction *)&act, NULL);
+
     int shmid = atoi(argv[1]), idx = atoi(argv[2]);
     Graph *gptr;
-    cout<<"\x1b[33;1m"<<"Consumer "<< idx <<" begins."<<"\x1b[0m"<<endl;
-    // get System V shared memory segment`
-    // shmid = shmget(SHMKEY, SHMSIZE, IPC_CREAT | 0666);
-    // if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
-    cout<<"\x1b[33;1m"<<"shmid: "<<shmid<<"\x1b[0m"<<endl;
+    color();
+    cout<<"Consumer "<< idx+1 <<" begins."<<endl;
+
+    cout<<"shmid: "<<shmid<<endl;
+    uncolor();
     // attach shared memory segment to address space of main process
-    gptr = (Graph*)shmat(shmid, NULL, 0);
+    global_gptr = shmat(shmid, NULL, 0);
+    gptr = (Graph*)global_gptr;
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
-    cout<<"\x1b[33;1m"<<"Node count: "<<gptr->nodeCount<<"\x1b[0m"<<endl;
+
+    color();
+    cout<<"Node count: "<<gptr->nodeCount<<endl;
+    uncolor();
     // gptr->show();
+    for(;1;)
+    {
+        // this is where dijkstra is run
+        color();
+        cout<<"Consumer "<<idx+1<<" running Dijkstra."<<endl;
+        uncolor();
+        sleep(2);
+    }
+
     shmdt(gptr);
-    cout<<"\x1b[33;1m"<<"Consumer "<< idx <<" ends."<<"\x1b[0m"<<endl;
+    color();
+    cout<<"Consumer "<< idx <<" ends."<<endl;
+    uncolor();
     return 0;
 }
