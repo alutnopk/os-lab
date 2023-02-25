@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <string>
 #include <cstring>
+#include <cmath>
 #include <sstream>
 #include <sys/wait.h>
 using namespace std;
@@ -159,6 +160,12 @@ void ctrlc_handler(int signum)
     shmdt(global_gptr);
     exit(0);
 }
+int intceil(double x)
+{
+    int y = (int)x;
+    if(x-y > 0) return y+1;
+    else return y;
+}
 int main(int argc, char** argv)
 {
     struct sigaction act;
@@ -181,18 +188,19 @@ int main(int argc, char** argv)
     // cout<<"Node count: "<<gptr->nodeCount<<endl;
     // uncolor();
     // gptr->show();
+    int n = gptr->nodeCount;
+    double k = n/10.0;
+    int startidx = intceil(idx*k), endidx = intceil((idx+1)*k) - 1;
+    // create filename buffer, snprintf
     for(;1;)
     {
-        // this is where dijkstra is run
+        // this is where dijkstra is run usi g [startidx, endidx] as source
+        // open file, write to it, close it
         color();
         // cout<<"Consumer "<<idx+1<<" running Dijkstra."<<endl;
         uncolor();
         sleep(TIMEOUT);
     }
 
-    shmdt(gptr);
-    color();
-    cout<<"Consumer "<< idx <<" ends."<<endl;
-    uncolor();
     return 0;
 }
