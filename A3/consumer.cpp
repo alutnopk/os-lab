@@ -1,5 +1,7 @@
 #include <iostream>
 #include <fstream>
+#include <algorithm>
+#include <queue>
 #include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -40,6 +42,7 @@ class Graph
     }
     int init(string filepath);
     void show();
+    void dijkstra(int source, char *filename);
 };
 
 int Graph::init(string filepath)
@@ -145,6 +148,46 @@ void Graph::show()
     }
     // MyFile.close();
 }
+
+void Graph::dijkstra(int source, char *filename)
+{
+    // Create a priority queue to hold the nodes to be visited
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+
+    // Create a vector to hold the distances from the source to each node
+    vector<int> distance(nodeCount, 9999);
+    distance[source] = 0;
+
+    // Enqueue the source node
+    pq.push(make_pair(0, source));
+
+    // Loop until the priority queue is empty
+    while (!pq.empty()) {
+        // Dequeue the node with the smallest distance
+        int u = pq.top().second;
+        pq.pop();
+
+        // Loop over the neighbors of the dequeued node
+        for (int i = 0; i < nodelist[u].neighborCount; i++) {
+            int v = nodelist[u].neighborlist[i];
+            int weight = 1; // assuming all edge weights are 1
+
+            // Update the distance if a shorter path is found
+            if (distance[v] > distance[u] + weight) {
+                distance[v] = distance[u] + weight;
+                pq.push(make_pair(distance[v], v));
+            }
+        }
+    }
+    ofstream MyFile;
+    MyFile.open(filename, fstream::app);
+    // Print the distances from the source to each node
+    for (int i = 0; i < nodeCount; i++) {
+        // cout << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
+        MyFile << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
+    }
+}
+
 void color()
 {
     cout<<"\x1b[33;1m";
@@ -192,10 +235,21 @@ int main(int argc, char** argv)
     double k = n/10.0;
     int startidx = intceil(idx*k), endidx = intceil((idx+1)*k) - 1;
     // create filename buffer, snprintf
+    char *filename;
+    filename = (char*)malloc(20*sizeof(char));
     for(;1;)
     {
         // this is where dijkstra is run usi g [startidx, endidx] as source
+
         // open file, write to it, close it
+        snprintf(filename, 20, "consumer%d.txt", idx+1);
+        
+        for(int i=startidx; i<=endidx; i++)
+        {
+            // cout<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
+            gptr->dijkstra(i, filename);
+        }
+
         color();
         // cout<<"Consumer "<<idx+1<<" running Dijkstra."<<endl;
         uncolor();

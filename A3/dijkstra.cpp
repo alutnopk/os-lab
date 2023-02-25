@@ -197,6 +197,6 @@ int main(int argc, char* argv[])
     if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     cout<<"Graph successfully stored."<<endl;
     gptr->show();
-    gptr->dijkstra(0);
+    gptr->dijkstra(1);
     return 0;
 }
