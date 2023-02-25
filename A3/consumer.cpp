@@ -186,6 +186,7 @@ void Graph::dijkstra(int source, char *filename)
         // cout << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
         MyFile << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
     }
+    
 }
 
 void color()
@@ -255,6 +256,6 @@ int main(int argc, char** argv)
         uncolor();
         sleep(TIMEOUT);
     }
-
+    free(filename);
     return 0;
 }
