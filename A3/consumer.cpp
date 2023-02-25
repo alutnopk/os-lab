@@ -17,7 +17,7 @@ using namespace std;
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
-#define TIMEOUT 2
+#define TIMEOUT 30
 
 void* global_gptr;
 typedef struct AdjList
@@ -186,7 +186,7 @@ void Graph::dijkstra(int source, char *filename)
         // cout << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
         MyFile << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
     }
-    
+    MyFile.close();
 }
 
 void color()
@@ -237,6 +237,8 @@ int main(int argc, char** argv)
     int startidx = intceil(idx*k), endidx = intceil((idx+1)*k) - 1;
     // create filename buffer, snprintf
     char *filename;
+    // ofstream MyFile;
+    // MyFile.open("dijkstra.txt", fstream::app);
     filename = (char*)malloc(20*sizeof(char));
     for(;1;)
     {
@@ -247,7 +249,8 @@ int main(int argc, char** argv)
         
         for(int i=startidx; i<=endidx; i++)
         {
-            // cout<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
+            cout<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
+            // MyFile<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
             gptr->dijkstra(i, filename);
         }
 

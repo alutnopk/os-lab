@@ -15,7 +15,7 @@ using namespace std;
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
-#define TIMEOUT 2
+#define TIMEOUT 50
 
 void* global_gptr;
 typedef struct AdjList
