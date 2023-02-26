@@ -5,10 +5,11 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <string>
 #include <cstring>
 #include <sstream>
-#include <sys/wait.h>
+#include <climits>
 using namespace std;
 
 #define SHMSIZE 4294967296
@@ -29,15 +30,18 @@ class Graph
     public:
     int nodeCount;
     AdjList nodelist[MAXCOUNT];
-    // constructor, destructor
-    public:
+    int shortest_path[MAXCOUNT][MAXCOUNT];
     Graph()
     {
         nodeCount = 0;
         for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
+        for(int i=0; i<MAXCOUNT; i++)
+            for(int j=0; j<MAXCOUNT; j++)
+                shortest_path[i][j] = INT_MAX;
     }
     int init(string filepath);
-    void show();
+    void print_graph(string filepath);
+    void print_path(string filepath);
 };
 
 int Graph::init(string filepath)
@@ -45,6 +49,7 @@ int Graph::init(string filepath)
     // initialize structure
     nodeCount = 0;
     for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
+    for(int i=0; i<MAXCOUNT; i++) for(int j=0; j<MAXCOUNT; j++) shortest_path[i][j] = INT_MAX;
     fstream fs;
     fs.open(filepath, ios::in); 
     if(!fs) return -1;
@@ -129,28 +134,48 @@ int Graph::init(string filepath)
     return 0;
 }
 
-void Graph::show()
+void Graph::print_graph(string filepath)
 {
-    cout<<"Total Nodes: "<<nodeCount<<endl;
-    // ofstream MyFile("output.txt");
+    // cout<<"Total Nodes: "<<nodeCount<<endl;
+    ios_base::sync_with_stdio(false);
+    ofstream outfile(filepath);
+    if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
     for(int i=0; i<nodeCount;)
     {
         if(nodelist[i].current == -1) continue;
-        // MyFile << nodelist[i].current<<":";
-        cout<<nodelist[i].current<<":";
+        outfile << nodelist[i].current<<"\t:\t";
+        // cout<<nodelist[i].current<<":";
         for(int j=0; j<nodelist[i].neighborCount; j++) 
         {
-            // MyFile<<nodelist[i].neighborlist[j]<< " ";
-            cout<<nodelist[i].neighborlist[j]<< " ";
+            outfile<<nodelist[i].neighborlist[j]<< " ";
+            // cout<<nodelist[i].neighborlist[j]<< " ";
         }
-        // MyFile<<endl;
-        cout<<endl;
+        outfile<<endl;
+        // cout<<endl;
         i++;
     }
-    // MyFile.close();
+    outfile<<"----------------------------------------------"<<endl;
+    outfile.close();
+    ios_base::sync_with_stdio(true);
+}
+void Graph::print_path(string filepath)
+{
+    ios_base::sync_with_stdio(false);
+    ofstream outfile(filepath);
+    if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
+    for(int i=0; i<nodeCount; i++)
+        for(int j=0; j<nodeCount; j++)
+        {
+            if(shortest_path[i][j] == INT_MAX) outfile<<i<<"->"<<j<<" : "<<"INF"<<endl;
+            else outfile<<i<<"->"<<j<<" : "<<shortest_path[i][j]<<endl;
+        }
+    outfile<<"----------------------------------------------"<<endl;
+    outfile.close();
+    ios_base::sync_with_stdio(true);
 }
 int main()
 {   
+
     struct sigaction act;
     act.sa_handler = SIG_IGN;
     sigaction(SIGINT, (const struct sigaction *)&act, NULL);
@@ -168,11 +193,11 @@ int main()
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
     cout<<"Shared memory segment successfully created."<<endl;
-    // cout<<sizeof(Graph)<<endl;
     if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     cout<<"Graph successfully stored at address "<<gptr<<endl;
     cout<<"Node count: "<<gptr->nodeCount<<endl;
-    // gptr->show();
+    // gptr->print_graph("maingraph.txt");
+    // gptr->print_path("mainpath.txt");
 
     char *temp = (char*)malloc(10*sizeof(char)); // to store shmid
     char *temp2 = (char*)malloc(2*sizeof(char)); // to store consumer index

@@ -32,53 +32,76 @@ typedef struct AdjList
 
 class Graph
 {
-    
     public:
     int nodeCount;
     AdjList nodelist[MAXCOUNT];
-    // constructor, destructor
+    int shortest_path[MAXCOUNT][MAXCOUNT];
     Graph()
     {
-        this->nodeCount = 0;
+        nodeCount = 0;
         for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
+        for(int i=0; i<MAXCOUNT; i++)
+            for(int j=0; j<MAXCOUNT; j++)
+                shortest_path[i][j] = INT_MAX;
     }
-    void show();
-    int dijkstra(int source, char *filename);
+    void print_graph(string filepath);
+    void print_path(string filepath);
+    int dijkstra_init(int source, char *filename);
 };
 
-void Graph::show()
+void Graph::print_graph(string filepath)
 {
-    cout<<"Total Nodes: "<<nodeCount<<endl;
-    // ofstream MyFile("output.txt");
+    // cout<<"Total Nodes: "<<nodeCount<<endl;
+    ios_base::sync_with_stdio(false);
+    ofstream outfile(filepath);
+    if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
     for(int i=0; i<nodeCount;)
     {
         if(nodelist[i].current == -1) continue;
-        // MyFile << nodelist[i].current<<":";
-        cout<<nodelist[i].current<<":";
+        outfile << nodelist[i].current<<"\t:\t";
+        // cout<<nodelist[i].current<<":";
         for(int j=0; j<nodelist[i].neighborCount; j++) 
         {
-            // MyFile<<nodelist[i].neighborlist[j]<< " ";
-            cout<<nodelist[i].neighborlist[j]<< " ";
+            outfile<<nodelist[i].neighborlist[j]<< " ";
+            // cout<<nodelist[i].neighborlist[j]<< " ";
         }
-        // MyFile<<endl;
-        cout<<endl;
+        outfile<<endl;
+        // cout<<endl;
         i++;
     }
-    // MyFile.close();
+    outfile<<"----------------------------------------------"<<endl;
+    outfile.close();
+    ios_base::sync_with_stdio(true);
 }
-
-int Graph::dijkstra(int source, char *filename)
+void Graph::print_path(string filepath)
+{
+    ios_base::sync_with_stdio(false);
+    ofstream outfile(filepath);
+    if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
+    for(int i=0; i<nodeCount; i++)
+        for(int j=0; j<nodeCount; j++)
+        {
+            if(shortest_path[i][j] == INT_MAX) outfile<<i<<"->"<<j<<" : "<<"INF"<<endl;
+            else outfile<<i<<"->"<<j<<" : "<<shortest_path[i][j]<<endl;
+        }
+    outfile<<"----------------------------------------------"<<endl;
+    outfile.close();
+    ios_base::sync_with_stdio(true);
+}
+int Graph::dijkstra_init(int source, char *filename)
 {
     // Create a priority queue to hold the nodes to be visited, in min-heap priority of their distance
     priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
 
-    // Create a vector to hold the distances from the source to each node
-    vector<int> distance(nodeCount, INT_MAX);
+    // // Create a vector to hold the distances from the source to each node
+    // vector<int> distance(nodeCount, INT_MAX);
+
+    // distance[i] is replaced by shortest_path[source][i]
 
     // Initialize single source
     if(nodelist[source].current == -1) return -1; // source not in graph
     pq.push(make_pair(0, source));
-    distance[source] = 0;
+    shortest_path[source][source] = 0;
 
     // Loop until the priority queue is empty
     while (!pq.empty())
@@ -96,10 +119,10 @@ int Graph::dijkstra(int source, char *filename)
 
             int weight = 1; // assuming all edge weights are 1
             // Update the distance if a shorter path is found
-            if ((distance[v] == INT_MAX) || (distance[v] > distance[u] + weight))
+            if ((shortest_path[source][v] == INT_MAX) || (shortest_path[source][v] > shortest_path[source][u] + weight))
             {
-                distance[v] = distance[u] + weight;
-                pq.push(make_pair(distance[v], v));
+                shortest_path[source][v] = shortest_path[source][u] + weight;
+                pq.push(make_pair(shortest_path[source][v], v));
             }
         }
         // auto start = chrono::high_resolution_clock::now();
@@ -107,16 +130,16 @@ int Graph::dijkstra(int source, char *filename)
         // auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
         // cout<<"time is:"<<duration.count()<<endl;
     }
-    ofstream MyFile;
-    MyFile.open(filename, fstream::app);
-    // Print the distances from the source to each node
-    for (int i = 0; i < nodeCount;)
-    {
-        if(nodelist[i].current == -1) continue;
-        MyFile <<source << "->" << i << " : " << distance[i] << endl;
-        i++;
-    }
-    MyFile.close();
+    // ofstream MyFile;
+    // MyFile.open(filename, fstream::app);
+    // // Print the distances from the source to each node
+    // for (int i = 0; i < nodeCount;)
+    // {
+    //     if(nodelist[i].current == -1) continue;
+    //     MyFile <<source << "->" << i << " : " << shortest_path[source][i] << endl;
+    //     i++;
+    // }
+    // MyFile.close();
     return 0;
 }
 
@@ -182,12 +205,13 @@ int main(int argc, char** argv)
             color();
             cout<<"Consumer "<<idx+1<<" running Dijkstra with source node "<<i;
             uncolor();
-            if(gptr->dijkstra(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; }
+            if(gptr->dijkstra_init(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; }
         }
 
         color2();
-        cout<<"Consumer "<<idx+1<<" Dijkstra complete.";
+        cout<<"Consumer "<<idx+1<<" Dijkstra complete. Writing output to "<<filename<<endl;
         uncolor();
+        gptr->print_path(filename);
         sleep(TIMEOUT);
     }
     free(filename);

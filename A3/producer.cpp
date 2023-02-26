@@ -5,11 +5,12 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <string>
 #include <cstring>
 #include <sstream>
-#include <sys/wait.h>
 #include <random>
+#include <climits>
 using namespace std;
 
 #define SHMSIZE 4294967296
@@ -32,14 +33,18 @@ class Graph
     public:
     int nodeCount;
     AdjList nodelist[MAXCOUNT];
-    // constructor, destructor
+    int shortest_path[MAXCOUNT][MAXCOUNT];
     Graph()
     {
-        this->nodeCount = 0;
+        nodeCount = 0;
         for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
+        for(int i=0; i<MAXCOUNT; i++)
+            for(int j=0; j<MAXCOUNT; j++)
+                shortest_path[i][j] = INT_MAX;
     }
     int addEdge(int x, int y);
-    void show();
+    void print_graph(string filepath);
+    void print_path(string filepath);
 };
 
 int Graph::addEdge(int x, int y)
@@ -107,27 +112,44 @@ int Graph::addEdge(int x, int y)
     return 0;
 }
 
-void Graph::show()
+void Graph::print_graph(string filepath)
 {
-    cout<<"Total Nodes: "<<nodeCount<<endl;
-    // ofstream MyFile("output.txt");
+    // cout<<"Total Nodes: "<<nodeCount<<endl;
+    ios_base::sync_with_stdio(false);
+    ofstream outfile(filepath);
+    if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
     for(int i=0; i<nodeCount;)
     {
         if(nodelist[i].current == -1) continue;
-        // MyFile << nodelist[i].current<<":";
-        cout<<nodelist[i].current<<":";
+        outfile << nodelist[i].current<<"\t:\t";
+        // cout<<nodelist[i].current<<":";
         for(int j=0; j<nodelist[i].neighborCount; j++) 
         {
-            // MyFile<<nodelist[i].neighborlist[j]<< " ";
-            cout<<nodelist[i].neighborlist[j]<< " ";
+            outfile<<nodelist[i].neighborlist[j]<< " ";
+            // cout<<nodelist[i].neighborlist[j]<< " ";
         }
-        // MyFile<<endl;
-        cout<<endl;
+        outfile<<endl;
+        // cout<<endl;
         i++;
     }
-    // MyFile.close();
+    outfile<<"----------------------------------------------"<<endl;
+    outfile.close();
+    ios_base::sync_with_stdio(true);
 }
-
+void Graph::print_path(string filepath)
+{
+    ios_base::sync_with_stdio(false);
+    ofstream outfile(filepath);
+    if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
+    for(int i=0; i<nodeCount; i++)
+        for(int j=0; j<nodeCount; j++)
+        {
+            if(shortest_path[i][j] == INT_MAX) outfile<<i<<"->"<<j<<" : "<<"INF"<<endl;
+            else outfile<<i<<"->"<<j<<" : "<<shortest_path[i][j]<<endl;
+        }
+    outfile.close();
+    ios_base::sync_with_stdio(true);
+}
 void color()
 {
     cout<<"\x1b[35;1m";
@@ -165,7 +187,7 @@ int main(int argc, char** argv)
     color();
     // cout<<gptr->nodeCount<<endl;
     uncolor();
-    // gptr->show();
+    // gptr->print_graph();
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<> distm(10,30);
@@ -193,10 +215,10 @@ int main(int argc, char** argv)
             }
         }
         color();
-        cout<<endl<<m<<" new nodes added ["<<gptr->nodelist[oldCount].current<<" - "<<gptr->nodelist[oldCount+m-1].current<<"] with "<<k<<" neighbors each."<<endl;
+        cout<<endl<<m<<" new nodes added ["<<oldCount<<" - "<<oldCount+m-1<<"] with "<<k<<" neighbors each."<<endl;
         cout<<"New node count: "<<gptr->nodeCount<<endl;
         uncolor();
-        // gptr->show();
+        // gptr->print_graph("producer_graph");
         sleep(TIMEOUT);
     }
     return 0;
