@@ -23,13 +23,11 @@ void ctrlc_handler(int signum) // signal handler to be executed upon Ctrl+C
     shmdt(global_gptr); // detach shared memory
     exit(0); // terminate process
 }
-int floorval(double x)
-{
-    return (int)x;
-}
 int ceilval(double x)
 {
-    return (int)x + 1;
+    int y = (int)x;
+    if(x-y > 0) return y+1;
+    else return y;
 }
 
 int main(int argc, char** argv)
@@ -51,7 +49,7 @@ int main(int argc, char** argv)
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
     double k = (gptr->nodeCount)/10.0;
-    int startidx = ceilval(idx*k), endidx = floorval((idx+1)*k); // range of nodes allotted to this process
+    int startidx = ceilval(idx*k), endidx = ceilval((idx+1)*k)-1; // range of nodes allotted to this process
     int oldstartidx = startidx, oldendidx = endidx, oldCount = gptr->nodeCount;
 
     char *filename = (char*)malloc(50*sizeof(char));
@@ -81,8 +79,7 @@ int main(int argc, char** argv)
         // startidx, endidx, nodeCount are updated by producer
         k = (gptr->nodeCount)/10.0;
         startidx = ceilval(idx*k);
-        endidx = floorval((idx+1)*k);
-
+        endidx = ceilval((idx+1)*k)-1;
 
         color();
         cout<<"Consumer "<<idx+1<<" running Dijkstra with source nodes ["<<startidx<<"-"<<endidx<<"]...";
