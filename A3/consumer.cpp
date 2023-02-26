@@ -50,6 +50,7 @@ int main(int argc, char** argv)
 
     double k = (gptr->nodeCount)/10.0;
     int startidx = ceilval(idx*k), endidx = floorval((idx+1)*k);
+    int oldstartidx = startidx, oldendidx = endidx, oldCount = gptr->nodeCount;
     char *filename = (char*)malloc(50*sizeof(char));
     snprintf(filename, 50, "consumer%d.txt", idx+1);
     remove(filename); // delete file if it already exists
@@ -72,16 +73,36 @@ int main(int argc, char** argv)
     color3();
     cout<<"Consumer "<<idx+1<<" output written successfully to "<<filename<<". Going to sleep now...";
     uncolor();
+
     for(;1;)
     {
         sleep(CONSUMER_TIMEOUT);
+        // startidx, endidx, nodeCount are updated by producer
+        k = (gptr->nodeCount)/10.0;
+        startidx = ceilval(idx*k);
+        endidx = floorval((idx+1)*k);
+
 
         color();
         cout<<"Consumer "<<idx+1<<" running optimized Dijkstra with source nodes ["<<startidx<<"-"<<endidx<<"]...";
         uncolor();
 
+        // normal dijkstra
         for(int i=startidx; i<=endidx; i++)
-            if(gptr->dijkstra_init(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; } // dijkstra to be changed
+        if(gptr->dijkstra_init(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; }
+
+        // // alternative optimization
+        // for(int i=oldendidx+1; i<=endidx; i++) // for each new source node
+        // {
+        //     // run usual dijkstra, populate the shortest paths for new rows
+        //     if(gptr->dijkstra_init(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; } // dijkstra to be changed
+        // }
+        // // now we deal with old rows
+        // for(int i=startidx; i<=oldendidx; i++)
+        // {
+        //     // iterate through each new node
+        //     // dijkstra_update(i, newnode)
+        // }
 
         color2();
         cout<<"Consumer "<<idx+1<<" optimized Dijkstra complete. Writing output to "<<filename;
@@ -92,6 +113,10 @@ int main(int argc, char** argv)
         color3();
         cout<<"Consumer "<<idx+1<<" output appended successfully to "<<filename<<". Going to sleep now...";
         uncolor();
+        // update old values to current
+        oldstartidx = startidx;
+        oldendidx = endidx;
+        oldCount = gptr->nodeCount;
     }
     free(filename);
     return 0;
