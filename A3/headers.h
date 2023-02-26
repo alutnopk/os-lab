@@ -23,8 +23,8 @@ using namespace std;
 #define SHMSIZE 4294967296
 #define MAX_COUNT 8192
 #define CONSUMER_COUNT 10
-#define PRODUCER_TIMEOUT 30
-#define CONSUMER_TIMEOUT 30
+#define PRODUCER_TIMEOUT 25
+#define CONSUMER_TIMEOUT 25
 
 void* global_gptr;
 
@@ -52,9 +52,10 @@ class Graph
     }
     int init(string filepath);
     int addEdge(int x, int y);
-    void print_graph(string filepath);
+    void print_graph(string filepath, int startidx, int endidx);
     void print_path(string filepath, int startidx, int endidx);
     int dijkstra_init(int source, string filename);
+    int dijkstra_opt(int source, string filename);
 };
 
 int Graph::init(string filepath)
@@ -254,14 +255,14 @@ int Graph::dijkstra_init(int source, string filename)
     }
     return 0;
 }
-void Graph::print_graph(string filepath)
+void Graph::print_graph(string filepath, int startidx, int endidx)
 {
     // cout<<"Total Nodes: "<<nodeCount<<endl;
     ios_base::sync_with_stdio(false);
     ofstream outfile;
     outfile.open(filepath, ios_base::app);
     if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
-    for(int i=0; i<nodeCount;)
+    for(int i=startidx; i<=endidx;)
     {
         if(nodelist[i].current == -1) continue;
         outfile << nodelist[i].current<<"\t:\t";

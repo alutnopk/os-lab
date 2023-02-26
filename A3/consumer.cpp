@@ -23,11 +23,13 @@ void ctrlc_handler(int signum)
     shmdt(global_gptr);
     exit(0);
 }
-int ceiling(double x)
+int floorval(double x)
 {
-    int y = (int)x;
-    if(x-y > 0) return y+1;
-    else return y;
+    return (int)x;
+}
+int ceilval(double x)
+{
+    return (int)x + 1;
 }
 
 int main(int argc, char** argv)
@@ -47,7 +49,7 @@ int main(int argc, char** argv)
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
     double k = (gptr->nodeCount)/10.0;
-    int startidx = ceiling(idx*k), endidx = ceiling((idx+1)*k) - 1;
+    int startidx = ceilval(idx*k), endidx = floorval((idx+1)*k);
     char *filename = (char*)malloc(50*sizeof(char));
     snprintf(filename, 50, "consumer%d.txt", idx+1);
     remove(filename); // delete file if it already exists
@@ -68,7 +70,7 @@ int main(int argc, char** argv)
     gptr->print_path(filename, startidx, endidx);
 
     color3();
-    cout<<"Consumer "<<idx+1<<" output written successfully to "<<filename<<"\nConsumer "<<idx+1<<" going to sleep now...";
+    cout<<"Consumer "<<idx+1<<" output written successfully to "<<filename<<". Going to sleep now...";
     uncolor();
     for(;1;)
     {
@@ -79,7 +81,7 @@ int main(int argc, char** argv)
         uncolor();
 
         for(int i=startidx; i<=endidx; i++)
-            if(gptr->dijkstra_init(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; }
+            if(gptr->dijkstra_init(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; } // dijkstra to be changed
 
         color2();
         cout<<"Consumer "<<idx+1<<" optimized Dijkstra complete. Writing output to "<<filename;

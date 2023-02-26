@@ -34,7 +34,6 @@ int main(int argc, char** argv)
     gptr = (Graph*)global_gptr;
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
-    // gptr->print_graph("producer_graph.txt");
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<> distm(10,30);
@@ -66,7 +65,7 @@ int main(int argc, char** argv)
         cout<<endl<<"Producer has added "<<m<<" new nodes ["<<oldCount<<" - "<<oldCount+m-1<<"] with "<<k<<" neighbors each.\n";
         cout<<"New node count: "<<gptr->nodeCount<<"\nProducer going to sleep now..."<<endl;
         uncolor();
-        // gptr->print_graph("producer_graph");
+        // gptr->print_graph("producer_graph.txt", oldCount, oldCount+m-1);
     }
     return 0;
 }

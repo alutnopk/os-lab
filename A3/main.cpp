@@ -23,8 +23,8 @@ int main()
     if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     cout<<"Graph successfully stored at address "<<gptr<<endl;
     cout<<"Initial node count: "<<gptr->nodeCount<<endl;
-    // gptr->print_graph("maingraph.txt");
-    // gptr->print_path("mainpath.txt");
+    // gptr->print_graph("main_graph.txt", 0, gptr->nodeCount);
+    // gptr->print_path("main_path.txt", 0, gptr->nodeCount);
 
     char *temp = (char*)malloc(10*sizeof(char)); // to store shmid
     char *temp2 = (char*)malloc(2*sizeof(char)); // to store consumer index
