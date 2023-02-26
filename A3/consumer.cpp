@@ -65,7 +65,7 @@ void Graph::print_graph(string filepath)
             outfile<<nodelist[i].neighborlist[j]<< " ";
             // cout<<nodelist[i].neighborlist[j]<< " ";
         }
-        outfile<<endl;
+        outfile<<"\n";
         // cout<<endl;
         i++;
     }
@@ -81,8 +81,8 @@ void Graph::print_path(string filepath)
     for(int i=0; i<nodeCount; i++)
         for(int j=0; j<nodeCount; j++)
         {
-            if(shortest_path[i][j] == INT_MAX) outfile<<i<<"->"<<j<<" : "<<"INF"<<endl;
-            else outfile<<i<<"->"<<j<<" : "<<shortest_path[i][j]<<endl;
+            if(shortest_path[i][j] == INT_MAX) outfile<<i<<"->"<<j<<" : INF\n";
+            else outfile<<i<<"->"<<j<<" : "<<shortest_path[i][j]<<"\n";
         }
     outfile<<"----------------------------------------------"<<endl;
     outfile.close();
@@ -143,11 +143,15 @@ int Graph::dijkstra_init(int source, char *filename)
     return 0;
 }
 
-void color()
+void color() // yellow with bold style
 {
     cout<<"\x1b[33;1m";
 }
-void color2()
+void color2() // blue with bold style
+{
+    cout<<"\x1b[34;1m";
+}
+void color3() // green with bold style
 {
     cout<<"\x1b[32;1m";
 }
@@ -177,8 +181,7 @@ int main(int argc, char** argv)
     int shmid = atoi(argv[1]), idx = atoi(argv[2]);
     Graph *gptr;
     color();
-    cout<<"Consumer "<< idx+1 <<" begins."<<endl;
-    cout<<"shmid: "<<shmid<<endl<<"idx: "<<idx;
+    cout<<"Consumer "<< idx+1 <<" begins.";
     uncolor();
     // attach shared memory segment to address space of main process
     global_gptr = shmat(shmid, NULL, 0);
@@ -188,9 +191,6 @@ int main(int argc, char** argv)
     double k = (gptr->nodeCount)/10.0;
     int startidx = intceil(idx*k), endidx = intceil((idx+1)*k) - 1;
 
-    color();
-    cout<<"Consumer "<< idx+1 <<" is allotted nodes ["<<startidx<<"-"<<endidx<<"]";
-    uncolor();
     // create filename buffer, snprintf
     char *filename;
     // ofstream MyFile;
@@ -200,18 +200,24 @@ int main(int argc, char** argv)
     {
         snprintf(filename, 50, "consumer%d.txt", idx+1);
         remove(filename); // delete file if it already exists
+
+        color();
+        cout<<"Consumer "<<idx+1<<" running Dijkstra using source nodes "<<startidx<<" to "<<endidx<<"...";
+        uncolor();
         for(int i=startidx; i<=endidx; i++)
         {
-            color();
-            cout<<"Consumer "<<idx+1<<" running Dijkstra with source node "<<i;
-            uncolor();
             if(gptr->dijkstra_init(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; }
         }
 
         color2();
-        cout<<"Consumer "<<idx+1<<" Dijkstra complete. Writing output to "<<filename<<endl;
+        cout<<"Consumer "<<idx+1<<" Dijkstra complete. Writing output to "<<filename;
         uncolor();
+
         gptr->print_path(filename);
+
+        color3();
+        cout<<"Consumer "<<idx+1<<" output written successfully to "<<filename<<endl<<"Consumer "<<idx+1<<" going to sleep now...";
+        uncolor();
         sleep(TIMEOUT);
     }
     free(filename);

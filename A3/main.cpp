@@ -150,7 +150,7 @@ void Graph::print_graph(string filepath)
             outfile<<nodelist[i].neighborlist[j]<< " ";
             // cout<<nodelist[i].neighborlist[j]<< " ";
         }
-        outfile<<endl;
+        outfile<<"\n";
         // cout<<endl;
         i++;
     }
@@ -166,8 +166,8 @@ void Graph::print_path(string filepath)
     for(int i=0; i<nodeCount; i++)
         for(int j=0; j<nodeCount; j++)
         {
-            if(shortest_path[i][j] == INT_MAX) outfile<<i<<"->"<<j<<" : "<<"INF"<<endl;
-            else outfile<<i<<"->"<<j<<" : "<<shortest_path[i][j]<<endl;
+            if(shortest_path[i][j] == INT_MAX) outfile<<i<<"->"<<j<<" : INF\n";
+            else outfile<<i<<"->"<<j<<" : "<<shortest_path[i][j]<<"\n";
         }
     outfile<<"----------------------------------------------"<<endl;
     outfile.close();
