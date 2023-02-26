@@ -185,10 +185,10 @@ int main(int argc, char** argv)
         for(int i=oldCount; i<oldCount+m; i++) // we assume that nodes are sequentially numbered
         {
             int x = i, y = -1;
-            discrete_distribution<> disty(weights.begin(), weights.end()); // TODO: add weighted random choices
+            discrete_distribution<> disty(weights.begin(), weights.end());
             for(int j=0; j<k; j++)
             {
-                y = disty(gen); // random == distinct?
+                y = disty(gen);
                 gptr->addEdge(x, y);
             }
         }
