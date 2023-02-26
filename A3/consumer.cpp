@@ -10,6 +10,7 @@
 #include <string>
 #include <cstring>
 #include <cmath>
+#include <climits>
 #include <sstream>
 #include <sys/wait.h>
 using namespace std;
@@ -17,7 +18,7 @@ using namespace std;
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
-#define TIMEOUT 30
+#define TIMEOUT 5
 
 void* global_gptr;
 typedef struct AdjList
@@ -155,38 +156,44 @@ void Graph::dijkstra(int source, char *filename)
     priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
 
     // Create a vector to hold the distances from the source to each node
-    vector<int> distance(nodeCount, 9999);
+    // cout<<nodeCount<<endl;
+    vector<int> distance(nodeCount+1, INT_MAX);
     distance[source] = 0;
 
     // Enqueue the source node
     pq.push(make_pair(0, source));
 
     // Loop until the priority queue is empty
-    while (!pq.empty()) {
+    while (!pq.empty()) 
+    {
         // Dequeue the node with the smallest distance
         int u = pq.top().second;
         pq.pop();
 
         // Loop over the neighbors of the dequeued node
-        for (int i = 0; i < nodelist[u].neighborCount; i++) {
+        for (int i = 0; i < nodelist[u].neighborCount; i++) 
+        {
             int v = nodelist[u].neighborlist[i];
             int weight = 1; // assuming all edge weights are 1
 
             // Update the distance if a shorter path is found
-            if (distance[v] > distance[u] + weight) {
+            if (distance[v] > distance[u] + weight) 
+            {
                 distance[v] = distance[u] + weight;
                 pq.push(make_pair(distance[v], v));
             }
         }
     }
     ofstream MyFile;
-    MyFile.open(filename, fstream::app);
+    // MyFile.open(filename, fstream::app);
+    MyFile.open(filename);
     // Print the distances from the source to each node
     for (int i = 0; i < nodeCount; i++) {
         // cout << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
         MyFile << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
     }
-    MyFile.close();
+    // MyFile.close();
+    
 }
 
 void color()
@@ -240,23 +247,23 @@ int main(int argc, char** argv)
     // ofstream MyFile;
     // MyFile.open("dijkstra.txt", fstream::app);
     filename = (char*)malloc(20*sizeof(char));
-    for(;1;)
+    while(1)
     {
         // this is where dijkstra is run usi g [startidx, endidx] as source
-
+        cout<<"Consumer " <<idx+1<<endl; 
         // open file, write to it, close it
-        snprintf(filename, 20, "consumer%d.txt", idx+1);
+        // snprintf(filename, 20, "consumer%d.txt", idx+1);
+        // cout<<"Node Count: "<<gptr->nodeCount<<endl;
+        // for(int i=startidx; i<=endidx; i++)
+        // {
+        //     // cout<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
+        //     // MyFile<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
+        //     gptr->dijkstra(i, filename);
+        // }
         
-        for(int i=startidx; i<=endidx; i++)
-        {
-            cout<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
-            // MyFile<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
-            gptr->dijkstra(i, filename);
-        }
-
-        color();
+        // color();
         // cout<<"Consumer "<<idx+1<<" running Dijkstra."<<endl;
-        uncolor();
+        // uncolor();
         sleep(TIMEOUT);
     }
     free(filename);
