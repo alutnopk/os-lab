@@ -1,178 +1,5 @@
-#include <iostream>
-#include <fstream>
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <string>
-#include <cstring>
-#include <sstream>
-#include <climits>
-using namespace std;
+#include "headers.h"
 
-#define SHMSIZE 4294967296
-#define SHMKEY 0
-#define MAXCOUNT 8192
-#define CONSUMERCOUNT 10
-
-typedef struct AdjList
-{
-    public:
-    int current;
-    int neighborCount;
-    int neighborlist[MAXCOUNT];
-} AdjList;
-
-class Graph
-{
-    public:
-    int nodeCount;
-    AdjList nodelist[MAXCOUNT];
-    int shortest_path[MAXCOUNT][MAXCOUNT];
-    Graph()
-    {
-        nodeCount = 0;
-        for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
-        for(int i=0; i<MAXCOUNT; i++)
-            for(int j=0; j<MAXCOUNT; j++)
-                shortest_path[i][j] = INT_MAX;
-    }
-    int init(string filepath);
-    void print_graph(string filepath);
-    void print_path(string filepath);
-};
-
-int Graph::init(string filepath)
-{
-    // initialize structure
-    nodeCount = 0;
-    for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
-    for(int i=0; i<MAXCOUNT; i++) for(int j=0; j<MAXCOUNT; j++) shortest_path[i][j] = INT_MAX;
-    fstream fs;
-    fs.open(filepath, ios::in); 
-    if(!fs) return -1;
-    if(fs.is_open())
-    {
-        string lin;
-        int x, y;
-        while(getline(fs, lin)) // store graph edges as pairs of vertices starting from index 2
-        {
-            stringstream slin(lin);
-            slin>>x>>y;
-
-            // for(int i=0; i<nodeCount; i++)
-            // shall be replaced by
-            // for(int i=0; i<nodeCount;)
-            // {
-            //    if(nodelist[i].current == -1) continue;
-            //    code here
-            //    i++;  
-            // }
-            int ix = nodelist[x].current, iy = nodelist[y].current;
-            if(ix>=0 && iy>=0) // if both x,y are old nodes
-            {
-                // add y into x list only if y not found
-                for(int j=0; j<nodelist[x].neighborCount; j++) // iterate through neighbors of x
-                    if(nodelist[x].neighborlist[j] == y) goto y_repeated; // if y already found, skip addition step
-                // else add y as neighbor
-                nodelist[x].neighborlist[nodelist[x].neighborCount] = y;
-                nodelist[x].neighborCount += 1;
-                if(nodelist[x].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                y_repeated:
-
-                // add x into y list only if x not found
-                for(int j=0; j<nodelist[y].neighborCount; j++) // iterate through neighbors of y
-                    if(nodelist[y].neighborlist[j] == x) goto x_repeated; // if x already found, skip addition step
-                // else add x as neighbor
-                nodelist[y].neighborlist[nodelist[iy].neighborCount] = x;
-                nodelist[y].neighborCount += 1;
-                if(nodelist[y].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                x_repeated:
-                ;
-            }
-            else if(ix>=0 && iy==-1) // x found but not y
-            {
-                // add y to x list
-                nodelist[x].neighborlist[nodelist[x].neighborCount] = y;
-                nodelist[x].neighborCount += 1;
-                if(nodelist[x].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                // init y list
-                nodelist[y].current = y;
-                nodelist[y].neighborlist[0] = x;
-                nodelist[y].neighborCount = 1;
-                nodeCount++;
-            }
-            else if(ix==-1 && iy>=0) // x is new node, not y
-            {
-                // add x to y list
-                nodelist[y].neighborlist[nodelist[y].neighborCount] = x;
-                nodelist[y].neighborCount += 1;
-                if(nodelist[y].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                // init x list
-                nodelist[x].current = x;
-                nodelist[x].neighborlist[0] = y;
-                nodelist[x].neighborCount = 1;
-                nodeCount++;
-            }
-            else // both new nodes
-            {
-                // init x list
-                nodelist[x].current = x;
-                nodelist[x].neighborlist[0] = y;
-                nodelist[x].neighborCount = 1;
-                nodeCount++;
-                // init y list
-                nodelist[y].current = y;
-                nodelist[y].neighborlist[0] = x;
-                nodelist[y].neighborCount = 1;
-                nodeCount++;
-            }
-        }
-    }
-    return 0;
-}
-
-void Graph::print_graph(string filepath)
-{
-    // cout<<"Total Nodes: "<<nodeCount<<endl;
-    ios_base::sync_with_stdio(false);
-    ofstream outfile(filepath);
-    if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
-    for(int i=0; i<nodeCount;)
-    {
-        if(nodelist[i].current == -1) continue;
-        outfile << nodelist[i].current<<"\t:\t";
-        // cout<<nodelist[i].current<<":";
-        for(int j=0; j<nodelist[i].neighborCount; j++) 
-        {
-            outfile<<nodelist[i].neighborlist[j]<< " ";
-            // cout<<nodelist[i].neighborlist[j]<< " ";
-        }
-        outfile<<"\n";
-        // cout<<endl;
-        i++;
-    }
-    outfile<<"----------------------------------------------"<<endl;
-    outfile.close();
-    ios_base::sync_with_stdio(true);
-}
-void Graph::print_path(string filepath)
-{
-    ios_base::sync_with_stdio(false);
-    ofstream outfile(filepath);
-    if(!outfile) { cerr<<"ERROR: Cannot open file."<<endl; return; }
-    for(int i=0; i<nodeCount; i++)
-        for(int j=0; j<nodeCount; j++)
-        {
-            if(shortest_path[i][j] == INT_MAX) outfile<<i<<"->"<<j<<" : INF\n";
-            else outfile<<i<<"->"<<j<<" : "<<shortest_path[i][j]<<"\n";
-        }
-    outfile<<"----------------------------------------------"<<endl;
-    outfile.close();
-    ios_base::sync_with_stdio(true);
-}
 int main()
 {   
 
@@ -183,19 +10,19 @@ int main()
     int shmid;
     Graph *gptr;
     pid_t prodpid;
-    pid_t conpid[CONSUMERCOUNT];
+    pid_t conpid[CONSUMER_COUNT];
     // create System V shared memory segment
     shmid = shmget(IPC_PRIVATE, SHMSIZE, IPC_CREAT | 0666);
     if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
-    cout<<"shmid: "<<shmid<<endl;
+
     // attach shared memory segment to address space of main process
     gptr = (Graph*)shmat(shmid, NULL, 0);
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
-    cout<<"Shared memory segment successfully created."<<endl;
+    cout<<"Shared memory segment successfully created, shmid: "<<shmid<<endl;
     if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     cout<<"Graph successfully stored at address "<<gptr<<endl;
-    cout<<"Node count: "<<gptr->nodeCount<<endl;
+    cout<<"Initial node count: "<<gptr->nodeCount<<endl;
     // gptr->print_graph("maingraph.txt");
     // gptr->print_path("mainpath.txt");
 
@@ -204,13 +31,12 @@ int main()
     snprintf(temp, 10, "%d", shmid);
     if((prodpid = fork()) == 0) // producer process
     {
-            cout<<"Producer forked."<<endl;
             execlp("./producer", "./producer", temp, NULL);
             cerr<<"ERROR: Failure in forking producer."<<endl;
             exit(1);
     }
-    sleep(1);
-    for(int i=0; i<CONSUMERCOUNT; i++)
+    // sleep(1);
+    for(int i=0; i<CONSUMER_COUNT; i++)
     {
         snprintf(temp2, 2, "%d", i);
         if((conpid[i] = fork()) == 0) // Consumer process
@@ -228,12 +54,12 @@ int main()
     free(temp2);
 
     waitpid(prodpid, NULL, WUNTRACED);
-    for(int i=0; i<CONSUMERCOUNT; i++) waitpid(conpid[i], NULL, WUNTRACED);
-    cout<<"Back to main. Detaching and deleting shared memory segment..."<<endl;
+    for(int i=0; i<CONSUMER_COUNT; i++) waitpid(conpid[i], NULL, WUNTRACED);
+    cout<<endl<<"Back to main process.\nDetaching and deleting shared memory segment..."<<endl;
     // Detach shared memory segment
     shmdt(gptr);
     // Mark the segment to be destroyed
     shmctl(shmid, IPC_RMID, NULL);
-
+    cout<<"Program successfully terminated."<<endl;
     return 0;
 }
