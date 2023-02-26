@@ -2,15 +2,15 @@
 
 int main()
 {   
-
+    // signal handler for main process
     struct sigaction act;
     act.sa_handler = SIG_IGN;
     sigaction(SIGINT, (const struct sigaction *)&act, NULL);
-    
     int shmid;
     Graph *gptr;
     pid_t prodpid;
     pid_t conpid[CONSUMER_COUNT];
+
     // create System V shared memory segment
     shmid = shmget(IPC_PRIVATE, SHMSIZE, IPC_CREAT | 0666);
     if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
@@ -20,9 +20,12 @@ int main()
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
     cout<<"Shared memory segment successfully created, shmid: "<<shmid<<endl;
+
+    // initialize graph with textfile data
     if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     cout<<"Graph successfully stored at address "<<gptr<<endl;
     cout<<"Initial node count: "<<gptr->nodeCount<<endl;
+
     // gptr->print_graph("main_graph.txt", 0, gptr->nodeCount);
     // gptr->print_path("main_path.txt", 0, gptr->nodeCount);
 
@@ -31,7 +34,7 @@ int main()
     snprintf(temp, 10, "%d", shmid);
     if((prodpid = fork()) == 0) // producer process
     {
-            execlp("./producer", "./producer", temp, NULL);
+            execlp("./producer", "./producer", temp, NULL); // pass shmid as command-line argument
             cerr<<"ERROR: Failure in forking producer."<<endl;
             exit(1);
     }
@@ -42,7 +45,7 @@ int main()
         if((conpid[i] = fork()) == 0) // Consumer process
         {
             // sleep(2);
-            execlp("./consumer", "./consumer", temp, temp2, NULL);
+            execlp("./consumer", "./consumer", temp, temp2, NULL); // pass shmid and consumer index no. as arguments
             cerr<<"ERROR: Failure in forking consumer."<<endl;
             exit(1);
         }
@@ -53,8 +56,8 @@ int main()
     free(temp);
     free(temp2);
 
-    waitpid(prodpid, NULL, WUNTRACED);
-    for(int i=0; i<CONSUMER_COUNT; i++) waitpid(conpid[i], NULL, WUNTRACED);
+    waitpid(prodpid, NULL, WUNTRACED); // wait for producer termination
+    for(int i=0; i<CONSUMER_COUNT; i++) waitpid(conpid[i], NULL, WUNTRACED); // wait for consumer termination
     cout<<endl<<"Back to main process.\nDetaching and deleting shared memory segment..."<<endl;
     // Detach shared memory segment
     shmdt(gptr);

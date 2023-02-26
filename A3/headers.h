@@ -28,20 +28,23 @@ using namespace std;
 
 void* global_gptr;
 
+// struct used to store the adjacency list for a node
 typedef struct AdjList
 {
     public:
-    int current;
-    int neighborCount;
-    int neighborlist[MAX_COUNT];
+    int current; // current node
+    int neighborCount; // no. of neighbors
+    int neighborlist[MAX_COUNT]; // array of neighbors of current node
 } AdjList;
 
+// object definition to store graph in adjacency list form, along with its shortest paths from each source node
 class Graph
 {
     public:
-    int nodeCount;
-    AdjList nodelist[MAX_COUNT];
-    int shortest_path[MAX_COUNT][MAX_COUNT];
+    int nodeCount; // total nodes
+    AdjList nodelist[MAX_COUNT]; // adjacency list
+    int shortest_path[MAX_COUNT][MAX_COUNT]; // shortest path matrix
+
     Graph()
     {
         nodeCount = 0;
@@ -54,16 +57,17 @@ class Graph
     int addEdge(int x, int y);
     void print_graph(string filepath, int startidx, int endidx);
     void print_path(string filepath, int startidx, int endidx);
-    int dijkstra_init(int source, string filename);
-    int dijkstra_opt(int source, string filename);
+    int dijkstra(int source, string filename);
 };
 
+// initializes the graph object with the textfile data
 int Graph::init(string filepath)
 {
-    // initialize structure
+    // initialize
     nodeCount = 0;
     for(int i=0; i<MAX_COUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
     for(int i=0; i<MAX_COUNT; i++) for(int j=0; j<MAX_COUNT; j++) shortest_path[i][j] = INT_MAX;
+
     fstream fs;
     fs.open(filepath, ios::in); 
     if(!fs) return -1;
@@ -71,32 +75,25 @@ int Graph::init(string filepath)
     {
         string lin;
         int x, y;
-        while(getline(fs, lin)) // store graph edges as pairs of vertices starting from index 2
+        while(getline(fs, lin))
         {
+            // read x,y from input file
             stringstream slin(lin);
             slin>>x>>y;
 
-            // for(int i=0; i<nodeCount; i++)
-            // shall be replaced by
-            // for(int i=0; i<nodeCount;)
-            // {
-            //    if(nodelist[i].current == -1) continue;
-            //    code here
-            //    i++;  
-            // }
             int ix = nodelist[x].current, iy = nodelist[y].current;
             if(ix>=0 && iy>=0) // if both x,y are old nodes
             {
-                // add y into x list only if y not found
+                // add y into x-list if y isn't already present
                 for(int j=0; j<nodelist[x].neighborCount; j++) // iterate through neighbors of x
                     if(nodelist[x].neighborlist[j] == y) goto y_repeated; // if y already found, skip addition step
-                // else add y as neighbor
+
                 nodelist[x].neighborlist[nodelist[x].neighborCount] = y;
                 nodelist[x].neighborCount += 1;
                 if(nodelist[x].neighborCount >= MAX_COUNT+1) return -1; // check if limit reached
                 y_repeated:
 
-                // add x into y list only if x not found
+                // add x into y-list if x isn't already present
                 for(int j=0; j<nodelist[y].neighborCount; j++) // iterate through neighbors of y
                     if(nodelist[y].neighborlist[j] == x) goto x_repeated; // if x already found, skip addition step
                 // else add x as neighbor
@@ -106,38 +103,38 @@ int Graph::init(string filepath)
                 x_repeated:
                 ;
             }
-            else if(ix>=0 && iy==-1) // x found but not y
+            else if(ix>=0 && iy==-1) // x is old node, y is new
             {
-                // add y to x list
+                // add y to x-list
                 nodelist[x].neighborlist[nodelist[x].neighborCount] = y;
                 nodelist[x].neighborCount += 1;
                 if(nodelist[x].neighborCount >= MAX_COUNT+1) return -1; // check if limit reached
-                // init y list
+                // init y-list
                 nodelist[y].current = y;
                 nodelist[y].neighborlist[0] = x;
                 nodelist[y].neighborCount = 1;
                 nodeCount++;
             }
-            else if(ix==-1 && iy>=0) // x is new node, not y
+            else if(ix==-1 && iy>=0) // x is new node, y is old
             {
-                // add x to y list
+                // add x to y-list
                 nodelist[y].neighborlist[nodelist[y].neighborCount] = x;
                 nodelist[y].neighborCount += 1;
                 if(nodelist[y].neighborCount >= MAX_COUNT+1) return -1; // check if limit reached
-                // init x list
+                // init x-list
                 nodelist[x].current = x;
                 nodelist[x].neighborlist[0] = y;
                 nodelist[x].neighborCount = 1;
                 nodeCount++;
             }
-            else // both new nodes
+            else // both are new nodes
             {
-                // init x list
+                // init x-list
                 nodelist[x].current = x;
                 nodelist[x].neighborlist[0] = y;
                 nodelist[x].neighborCount = 1;
                 nodeCount++;
-                // init y list
+                // init y-list
                 nodelist[y].current = y;
                 nodelist[y].neighborlist[0] = x;
                 nodelist[y].neighborCount = 1;
@@ -147,6 +144,8 @@ int Graph::init(string filepath)
     }
     return 0;
 }
+
+// adds an edge (x, y) to the graph
 int Graph::addEdge(int x, int y)
 {
     int ix = nodelist[x].current, iy = nodelist[y].current;
@@ -211,15 +210,12 @@ int Graph::addEdge(int x, int y)
     }
     return 0;
 }
-int Graph::dijkstra_init(int source, string filename)
+
+// single source Dijkstra implementation
+int Graph::dijkstra(int source, string filename)
 {
     // Create a priority queue to hold the nodes to be visited, in min-heap priority of their distance
     priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
-
-    // // Create a vector to hold the distances from the source to each node
-    // vector<int> distance(nodeCount, INT_MAX);
-
-    // distance[i] is replaced by shortest_path[source][i]
 
     // Initialize single source
     if(nodelist[source].current == -1) return -1; // source not in graph
@@ -248,13 +244,10 @@ int Graph::dijkstra_init(int source, string filename)
                 pq.push(make_pair(shortest_path[source][v], v));
             }
         }
-        // auto start = chrono::high_resolution_clock::now();
-        // auto stop = chrono::high_resolution_clock::now();
-        // auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
-        // cout<<"time is:"<<duration.count()<<endl;
     }
     return 0;
 }
+
 void Graph::print_graph(string filepath, int startidx, int endidx)
 {
     // cout<<"Total Nodes: "<<nodeCount<<endl;
@@ -280,6 +273,7 @@ void Graph::print_graph(string filepath, int startidx, int endidx)
     outfile.close();
     ios_base::sync_with_stdio(true);
 }
+
 void Graph::print_path(string filepath, int startidx, int endidx)
 {
     ios_base::sync_with_stdio(false);
