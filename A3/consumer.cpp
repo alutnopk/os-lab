@@ -7,18 +7,19 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <string>
 #include <cstring>
 #include <cmath>
-#include <climits>
 #include <sstream>
-#include <sys/wait.h>
+#include <climits>
+#include <chrono>
 using namespace std;
 
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
-#define TIMEOUT 5
+#define TIMEOUT 30
 
 void* global_gptr;
 typedef struct AdjList
@@ -41,102 +42,17 @@ class Graph
         this->nodeCount = 0;
         for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
     }
-    int init(string filepath);
     void show();
-    void dijkstra(int source, char *filename);
+    int dijkstra(int source, char *filename);
 };
-
-int Graph::init(string filepath)
-{
-    this->nodeCount=0;
-    fstream fs;
-    fs.open(filepath, ios::in); 
-    if(!fs) return -1;
-    if(fs.is_open())
-    {
-        string lin;
-        int x, y;
-        while(getline(fs, lin)) // store graph edges as pairs of vertices starting from index 2
-        {
-            stringstream slin(lin);
-            slin>>x>>y;
-            // if(idx >= SHMSIZE-2){ cerr<<"ERROR: Insufficient shared memory to store graph."<<endl; return 1; }
-            int ix = -1, iy = -1;
-            for(int i=0; i<nodeCount; i++)
-            {
-                if(nodelist[i].current == x) ix = i;
-                if(nodelist[i].current == y) iy = i;
-                if(ix>=0 && iy>=0) break;
-            }
-            if(ix>=0 && iy>=0) // if both x,y are old nodes
-            {
-                // add y into x list only if y not found
-                for(int j=0; j<nodelist[ix].neighborCount; j++) // iterate through neighbors of x
-                    if(nodelist[ix].neighborlist[j] == y) goto y_repeated; // if y already found, skip addition step
-                // else add y as neighbor
-                nodelist[ix].neighborlist[nodelist[ix].neighborCount] = y;
-                nodelist[ix].neighborCount += 1;
-                if(nodelist[ix].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                y_repeated:
-
-                // add x into y list only if x not found
-                for(int j=0; j<nodelist[iy].neighborCount; j++) // iterate through neighbors of y
-                    if(nodelist[iy].neighborlist[j] == x) goto x_repeated; // if x already found, skip addition step
-                // else add x as neighbor
-                nodelist[iy].neighborlist[nodelist[iy].neighborCount] = x;
-                nodelist[iy].neighborCount += 1;
-                if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                x_repeated:
-                ;
-            }
-            else if(ix>=0 && iy==-1) // x found but not y
-            {
-                // add y to x list
-                nodelist[ix].neighborlist[nodelist[ix].neighborCount] = y;
-                nodelist[ix].neighborCount += 1;
-                if(nodelist[ix].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                // init y list
-                nodelist[nodeCount].current = y;
-                nodelist[nodeCount].neighborlist[0] = x;
-                nodelist[nodeCount].neighborCount = 1;
-                nodeCount++;
-            }
-            else if(ix==-1 && iy>=0) // x is new node, not y
-            {
-                // add x to y list
-                nodelist[iy].neighborlist[nodelist[iy].neighborCount] = x;
-                nodelist[iy].neighborCount += 1;
-                if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                // init x list
-                nodelist[nodeCount].current = x;
-                nodelist[nodeCount].neighborlist[0] = y;
-                nodelist[nodeCount].neighborCount = 1;
-                nodeCount++;
-            }
-            else // both new nodes
-            {
-                // init x list
-                nodelist[nodeCount].current = x;
-                nodelist[nodeCount].neighborlist[0] = y;
-                nodelist[nodeCount].neighborCount = 1;
-                nodeCount++;
-                // init y list
-                nodelist[nodeCount].current = y;
-                nodelist[nodeCount].neighborlist[0] = x;
-                nodelist[nodeCount].neighborCount = 1;
-                nodeCount++;
-            }
-        }
-    }
-    return 0;
-}
 
 void Graph::show()
 {
     cout<<"Total Nodes: "<<nodeCount<<endl;
     // ofstream MyFile("output.txt");
-    for(int i=0; i<nodeCount; i++)
+    for(int i=0; i<nodeCount;)
     {
+        if(nodelist[i].current == -1) continue;
         // MyFile << nodelist[i].current<<":";
         cout<<nodelist[i].current<<":";
         for(int j=0; j<nodelist[i].neighborCount; j++) 
@@ -146,63 +62,75 @@ void Graph::show()
         }
         // MyFile<<endl;
         cout<<endl;
+        i++;
     }
     // MyFile.close();
 }
 
-void Graph::dijkstra(int source, char *filename)
+int Graph::dijkstra(int source, char *filename)
 {
-    // Create a priority queue to hold the nodes to be visited
+    // Create a priority queue to hold the nodes to be visited, in min-heap priority of their distance
     priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
 
     // Create a vector to hold the distances from the source to each node
-    // cout<<nodeCount<<endl;
-    vector<int> distance(nodeCount+1, INT_MAX);
+    vector<int> distance(nodeCount, INT_MAX);
+
+    // Initialize single source
+    if(nodelist[source].current == -1) return -1; // source not in graph
+    pq.push(make_pair(0, source));
     distance[source] = 0;
 
-    // Enqueue the source node
-    pq.push(make_pair(0, source));
-
     // Loop until the priority queue is empty
-    while (!pq.empty()) 
+    while (!pq.empty())
     {
-        // Dequeue the node with the smallest distance
+        // Dequeue the node with the smallest distance (call it u)
         int u = pq.top().second;
         pq.pop();
+        if(nodelist[u].current == -1) return -1; // u not in graph
 
         // Loop over the neighbors of the dequeued node
-        for (int i = 0; i < nodelist[u].neighborCount; i++) 
+        for (int i = 0; i < nodelist[u].neighborCount; i++)
         {
-            int v = nodelist[u].neighborlist[i];
-            int weight = 1; // assuming all edge weights are 1
 
+            int v = nodelist[u].neighborlist[i];
+
+            int weight = 1; // assuming all edge weights are 1
             // Update the distance if a shorter path is found
-            if (distance[v] > distance[u] + weight) 
+            if ((distance[v] == INT_MAX) || (distance[v] > distance[u] + weight))
             {
                 distance[v] = distance[u] + weight;
                 pq.push(make_pair(distance[v], v));
             }
         }
+        // auto start = chrono::high_resolution_clock::now();
+        // auto stop = chrono::high_resolution_clock::now();
+        // auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
+        // cout<<"time is:"<<duration.count()<<endl;
     }
     ofstream MyFile;
-    // MyFile.open(filename, fstream::app);
-    MyFile.open(filename);
+    MyFile.open(filename, fstream::app);
     // Print the distances from the source to each node
-    for (int i = 0; i < nodeCount; i++) {
-        // cout << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
-        MyFile << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
+    for (int i = 0; i < nodeCount;)
+    {
+        if(nodelist[i].current == -1) continue;
+        MyFile <<source << "->" << i << " : " << distance[i] << endl;
+        i++;
     }
-    // MyFile.close();
-    
+    MyFile.close();
+    return 0;
 }
 
 void color()
 {
     cout<<"\x1b[33;1m";
 }
+void color2()
+{
+    cout<<"\x1b[32;1m";
+}
 void uncolor()
 {
-    cout<<"\x1b[0m";
+    cout<<"\x1b[0m"<<endl;
 }
 void ctrlc_handler(int signum)
 {
@@ -227,43 +155,39 @@ int main(int argc, char** argv)
     Graph *gptr;
     color();
     cout<<"Consumer "<< idx+1 <<" begins."<<endl;
-
-    // cout<<"shmid: "<<shmid<<endl;
+    cout<<"shmid: "<<shmid<<endl<<"idx: "<<idx;
     uncolor();
     // attach shared memory segment to address space of main process
     global_gptr = shmat(shmid, NULL, 0);
     gptr = (Graph*)global_gptr;
     if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
 
-    // color();
-    // cout<<"Node count: "<<gptr->nodeCount<<endl;
-    // uncolor();
-    // gptr->show();
-    int n = gptr->nodeCount;
-    double k = n/10.0;
+    double k = (gptr->nodeCount)/10.0;
     int startidx = intceil(idx*k), endidx = intceil((idx+1)*k) - 1;
+
+    color();
+    cout<<"Consumer "<< idx+1 <<" is allotted nodes ["<<startidx<<"-"<<endidx<<"]";
+    uncolor();
     // create filename buffer, snprintf
     char *filename;
     // ofstream MyFile;
-    // MyFile.open("dijkstra.txt", fstream::app);
-    filename = (char*)malloc(20*sizeof(char));
-    while(1)
+    // MyFile.open("debug.txt", fstream::app);
+    filename = (char*)malloc(50*sizeof(char));
+    for(;1;)
     {
-        // this is where dijkstra is run usi g [startidx, endidx] as source
-        cout<<"Consumer " <<idx+1<<endl; 
-        // open file, write to it, close it
-        // snprintf(filename, 20, "consumer%d.txt", idx+1);
-        // cout<<"Node Count: "<<gptr->nodeCount<<endl;
-        // for(int i=startidx; i<=endidx; i++)
-        // {
-        //     // cout<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
-        //     // MyFile<<"Consumer "<<idx+1<<" running Dijkstra from "<<gptr->nodelist[i].current<<endl;
-        //     gptr->dijkstra(i, filename);
-        // }
-        
-        // color();
-        // cout<<"Consumer "<<idx+1<<" running Dijkstra."<<endl;
-        // uncolor();
+        snprintf(filename, 50, "consumer%d.txt", idx+1);
+        remove(filename); // delete file if it already exists
+        for(int i=startidx; i<=endidx; i++)
+        {
+            color();
+            cout<<"Consumer "<<idx+1<<" running Dijkstra with source node "<<i;
+            uncolor();
+            if(gptr->dijkstra(i, filename) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; }
+        }
+
+        color2();
+        cout<<"Consumer "<<idx+1<<" Dijkstra complete.";
+        uncolor();
         sleep(TIMEOUT);
     }
     free(filename);

@@ -15,7 +15,7 @@ using namespace std;
 #define SHMSIZE 4294967296
 #define SHMKEY 0
 #define MAXCOUNT 8192
-#define TIMEOUT 50
+#define TIMEOUT 1000
 
 void* global_gptr;
 typedef struct AdjList
@@ -38,161 +38,70 @@ class Graph
         this->nodeCount = 0;
         for(int i=0; i<MAXCOUNT; i++) { this->nodelist[i].current = -1; this->nodelist[i].neighborCount = 0; }
     }
-    int init(string filepath);
     int addEdge(int x, int y);
     void show();
-    void show(int n);
 };
 
-int Graph::init(string filepath)
-{
-    this->nodeCount=0;
-    fstream fs;
-    fs.open(filepath, ios::in); 
-    if(!fs) return -1;
-    if(fs.is_open())
-    {
-        string lin;
-        int x, y;
-        while(getline(fs, lin)) // store graph edges as pairs of vertices starting from index 2
-        {
-            stringstream slin(lin);
-            slin>>x>>y;
-            // if(idx >= SHMSIZE-2){ cerr<<"ERROR: Insufficient shared memory to store graph."<<endl; return 1; }
-            int ix = -1, iy = -1;
-            for(int i=0; i<nodeCount; i++)
-            {
-                if(nodelist[i].current == x) ix = i;
-                if(nodelist[i].current == y) iy = i;
-                if(ix>=0 && iy>=0) break;
-            }
-            if(ix>=0 && iy>=0) // if both x,y are old nodes
-            {
-                // add y into x list only if y not found
-                for(int j=0; j<nodelist[ix].neighborCount; j++) // iterate through neighbors of x
-                    if(nodelist[ix].neighborlist[j] == y) goto y_repeated; // if y already found, skip addition step
-                // else add y as neighbor
-                nodelist[ix].neighborlist[nodelist[ix].neighborCount] = y;
-                nodelist[ix].neighborCount += 1;
-                if(nodelist[ix].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                y_repeated:
-
-                // add x into y list only if x not found
-                for(int j=0; j<nodelist[iy].neighborCount; j++) // iterate through neighbors of y
-                    if(nodelist[iy].neighborlist[j] == x) goto x_repeated; // if x already found, skip addition step
-                // else add x as neighbor
-                nodelist[iy].neighborlist[nodelist[iy].neighborCount] = x;
-                nodelist[iy].neighborCount += 1;
-                if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                x_repeated:
-                cout<<endl;
-            }
-            else if(ix>=0 && iy==-1) // x found but not y
-            {
-                // add y to x list
-                nodelist[ix].neighborlist[nodelist[ix].neighborCount] = y;
-                nodelist[ix].neighborCount += 1;
-                if(nodelist[ix].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                // init y list
-                nodelist[nodeCount].current = y;
-                nodelist[nodeCount].neighborlist[0] = x;
-                nodelist[nodeCount].neighborCount = 1;
-                nodeCount++;
-            }
-            else if(ix==-1 && iy>=0) // x is new node, not y
-            {
-                // add x to y list
-                nodelist[iy].neighborlist[nodelist[iy].neighborCount] = x;
-                nodelist[iy].neighborCount += 1;
-                if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
-                // init x list
-                nodelist[nodeCount].current = x;
-                nodelist[nodeCount].neighborlist[0] = y;
-                nodelist[nodeCount].neighborCount = 1;
-                nodeCount++;
-            }
-            else // both new nodes
-            {
-                // init x list
-                nodelist[nodeCount].current = x;
-                nodelist[nodeCount].neighborlist[0] = y;
-                nodelist[nodeCount].neighborCount = 1;
-                nodeCount++;
-                // init y list
-                nodelist[nodeCount].current = y;
-                nodelist[nodeCount].neighborlist[0] = x;
-                nodelist[nodeCount].neighborCount = 1;
-                nodeCount++;
-            }
-        }
-    }
-    return 0;
-}
 int Graph::addEdge(int x, int y)
 {
-    int ix = -1, iy = -1;
-    for(int i=0; i<nodeCount; i++)
-    {
-        if(nodelist[i].current == x) ix = i;
-        if(nodelist[i].current == y) iy = i;
-        if(ix>=0 && iy>=0) break;
-    }
+    int ix = nodelist[x].current, iy = nodelist[y].current;
+
     if(ix>=0 && iy>=0) // if both x,y are old nodes
     {
         // add y into x list only if y not found
-        for(int j=0; j<nodelist[ix].neighborCount; j++) // iterate through neighbors of x
-            if(nodelist[ix].neighborlist[j] == y) goto y_repeated; // if y already found, skip addition step
+        for(int j=0; j<nodelist[x].neighborCount; j++) // iterate through neighbors of x
+            if(nodelist[x].neighborlist[j] == y) goto y_repeated; // if y already found, skip addition step
         // else add y as neighbor
-        nodelist[ix].neighborlist[nodelist[ix].neighborCount] = y;
-        nodelist[ix].neighborCount += 1;
-        if(nodelist[ix].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
+        nodelist[x].neighborlist[nodelist[x].neighborCount] = y;
+        nodelist[x].neighborCount += 1;
+        if(nodelist[x].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
         y_repeated:
 
         // add x into y list only if x not found
-        for(int j=0; j<nodelist[iy].neighborCount; j++) // iterate through neighbors of y
-            if(nodelist[iy].neighborlist[j] == x) goto x_repeated; // if x already found, skip addition step
+        for(int j=0; j<nodelist[y].neighborCount; j++) // iterate through neighbors of y
+            if(nodelist[y].neighborlist[j] == x) goto x_repeated; // if x already found, skip addition step
         // else add x as neighbor
-        nodelist[iy].neighborlist[nodelist[iy].neighborCount] = x;
-        nodelist[iy].neighborCount += 1;
-        if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
+        nodelist[y].neighborlist[nodelist[iy].neighborCount] = x;
+        nodelist[y].neighborCount += 1;
+        if(nodelist[y].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
         x_repeated:
         ;
     }
     else if(ix>=0 && iy==-1) // x found but not y
     {
         // add y to x list
-        nodelist[ix].neighborlist[nodelist[ix].neighborCount] = y;
-        nodelist[ix].neighborCount += 1;
-        if(nodelist[ix].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
+        nodelist[x].neighborlist[nodelist[x].neighborCount] = y;
+        nodelist[x].neighborCount += 1;
+        if(nodelist[x].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
         // init y list
-        nodelist[nodeCount].current = y;
-        nodelist[nodeCount].neighborlist[0] = x;
-        nodelist[nodeCount].neighborCount = 1;
+        nodelist[y].current = y;
+        nodelist[y].neighborlist[0] = x;
+        nodelist[y].neighborCount = 1;
         nodeCount++;
     }
     else if(ix==-1 && iy>=0) // x is new node, not y
     {
         // add x to y list
-        nodelist[iy].neighborlist[nodelist[iy].neighborCount] = x;
-        nodelist[iy].neighborCount += 1;
-        if(nodelist[iy].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
+        nodelist[y].neighborlist[nodelist[y].neighborCount] = x;
+        nodelist[y].neighborCount += 1;
+        if(nodelist[y].neighborCount >= MAXCOUNT+1) return -1; // check if limit reached
         // init x list
-        nodelist[nodeCount].current = x;
-        nodelist[nodeCount].neighborlist[0] = y;
-        nodelist[nodeCount].neighborCount = 1;
+        nodelist[x].current = x;
+        nodelist[x].neighborlist[0] = y;
+        nodelist[x].neighborCount = 1;
         nodeCount++;
     }
     else // both new nodes
     {
         // init x list
-        nodelist[nodeCount].current = x;
-        nodelist[nodeCount].neighborlist[0] = y;
-        nodelist[nodeCount].neighborCount = 1;
+        nodelist[x].current = x;
+        nodelist[x].neighborlist[0] = y;
+        nodelist[x].neighborCount = 1;
         nodeCount++;
         // init y list
-        nodelist[nodeCount].current = y;
-        nodelist[nodeCount].neighborlist[0] = x;
-        nodelist[nodeCount].neighborCount = 1;
+        nodelist[y].current = y;
+        nodelist[y].neighborlist[0] = x;
+        nodelist[y].neighborCount = 1;
         nodeCount++;
     }
     return 0;
@@ -202,8 +111,9 @@ void Graph::show()
 {
     cout<<"Total Nodes: "<<nodeCount<<endl;
     // ofstream MyFile("output.txt");
-    for(int i=0; i<nodeCount; i++)
+    for(int i=0; i<nodeCount;)
     {
+        if(nodelist[i].current == -1) continue;
         // MyFile << nodelist[i].current<<":";
         cout<<nodelist[i].current<<":";
         for(int j=0; j<nodelist[i].neighborCount; j++) 
@@ -213,34 +123,18 @@ void Graph::show()
         }
         // MyFile<<endl;
         cout<<endl;
+        i++;
     }
     // MyFile.close();
 }
-void Graph::show(int n)
-{
-    cout<<"Total Nodes: "<<nodeCount<<endl;
-    // ofstream MyFile("output.txt");
-    for(int i=n; i<nodeCount; i++)
-    {
-        // MyFile << nodelist[i].current<<":";
-        cout<<nodelist[i].current<<":";
-        for(int j=0; j<nodelist[i].neighborCount; j++) 
-        {
-            // MyFile<<nodelist[i].neighborlist[j]<< " ";
-            cout<<nodelist[i].neighborlist[j]<< " ";
-        }
-        // MyFile<<endl;
-        cout<<endl;
-    }
-    // MyFile.close();
-}
+
 void color()
 {
     cout<<"\x1b[35;1m";
 }
 void uncolor()
 {
-    cout<<"\x1b[0m";
+    cout<<"\x1b[0m"<<endl;
 }
 void ctrlc_handler(int signum)
 {
@@ -249,6 +143,7 @@ void ctrlc_handler(int signum)
     shmdt(global_gptr);
     exit(0);
 }
+
 int main(int argc, char** argv)
 {
     struct sigaction act;
@@ -285,8 +180,6 @@ int main(int argc, char** argv)
         weights.clear();
         for(int i=0; i<oldCount; i++)
         {
-            // retrieve 
-            gptr->nodelist[i].neighborCount;
             weights.push_back(gptr->nodelist[i].neighborCount);
         }
         for(int i=oldCount; i<oldCount+m; i++) // we assume that nodes are sequentially numbered
@@ -303,6 +196,7 @@ int main(int argc, char** argv)
         cout<<endl<<m<<" new nodes added ["<<gptr->nodelist[oldCount].current<<" - "<<gptr->nodelist[oldCount+m-1].current<<"] with "<<k<<" neighbors each."<<endl;
         cout<<"New node count: "<<gptr->nodeCount<<endl;
         uncolor();
+        // gptr->show();
         sleep(TIMEOUT);
     }
     return 0;

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <queue>
 #include <sys/wait.h>
+#include <climits>
 using namespace std;
 
 #define SHMSIZE 4294967296
@@ -39,7 +40,7 @@ class Graph
     }
     int init(string filepath);
     void show();
-    void dijkstra(int source);
+    int dijkstra(int source);
 };
 
 int Graph::init(string filepath)
@@ -140,42 +141,58 @@ void Graph::show()
     }
 }
 
-void Graph::dijkstra(int source)
+// select closest vertex
+// check if any of its neighbors are to be relaxed
+// add relaxed neighbors if necessary
+int Graph::dijkstra(int source)
 {
-    // Create a priority queue to hold the nodes to be visited
+    // Create a priority queue to hold the nodes to be visited, in min-heap priority of their distance
     priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
 
     // Create a vector to hold the distances from the source to each node
-    vector<int> distance(nodeCount, 9999);
-    distance[source] = 0;
+    vector<int> distance(nodeCount, INT_MAX);
 
-    // Enqueue the source node
+    // Initialize single source
     pq.push(make_pair(0, source));
+    int idxinit = -1;
+    for(idxinit=0; idxinit<nodeCount; idxinit++) if(source == nodelist[idxinit].current) break;
+    if(idxinit >= nodeCount) return -1; // source not in graph
+    distance[idxinit] = 0;
 
     // Loop until the priority queue is empty
     while (!pq.empty()) {
-        // Dequeue the node with the smallest distance
+        // Dequeue the node with the smallest distance (call it u)
         int u = pq.top().second;
         pq.pop();
+        
+        // find index of node u
+        int idxu = -1;
+        for(idxu=0; idxu<nodeCount; idxu++) if(u == nodelist[idxu].current) break;
+        if(idxu >= nodeCount) return -1; // node not in graph
 
         // Loop over the neighbors of the dequeued node
-        for (int i = 0; i < nodelist[u].neighborCount; i++) {
-            int v = nodelist[u].neighborlist[i];
-            int weight = 1; // assuming all edge weights are 1
+        for (int i = 0; i < nodelist[idxu].neighborCount; i++) {
+            int v = nodelist[idxu].neighborlist[i];
+            // find index of node v
+            int idxv = -1;
+            for(idxv=0; idxv<nodeCount; idxv++) if(v == nodelist[idxv].current) break;
 
+            int weight = 1; // assuming all edge weights are 1
             // Update the distance if a shorter path is found
-            if (distance[v] > distance[u] + weight) {
-                distance[v] = distance[u] + weight;
-                pq.push(make_pair(distance[v], v));
+            if ((distance[idxv] == INT_MAX) || (distance[idxv] > distance[idxu] + weight)) {
+                distance[idxv] = distance[idxu] + weight;
+                pq.push(make_pair(distance[idxv], v));
             }
         }
     }
     ofstream MyFile("lol.txt");
     // Print the distances from the source to each node
     for (int i = 0; i < nodeCount; i++) {
-        cout << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
-        MyFile << "Distance from " << source << " to " << i << " is " << distance[i] << endl;
+        // cout << "Shortest path from " << nodelist[idxinit].current << " to " << nodelist[i].current << " is " << distance[i] << endl;
+        MyFile << "Shortest path from " << nodelist[idxinit].current << " to " << nodelist[i].current << " is " << distance[i] << endl;
     }
+    cout<< INT_MAX << endl;
+    return 0;
 }
 
 
@@ -196,7 +213,7 @@ int main(int argc, char* argv[])
     // cout<<sizeof(Graph)<<endl;
     if(gptr->init("facebook_combined.txt") == -1) { cerr<<"ERROR: Unable to load graph from file."<<endl; return 1; }
     cout<<"Graph successfully stored."<<endl;
-    gptr->show();
-    gptr->dijkstra(1);
+    // gptr->show();
+    if(gptr->dijkstra(400) == -1) { cerr<<"ERROR: Invalid source node."<<endl; return 1; }
     return 0;
 }
