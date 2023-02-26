@@ -23,8 +23,8 @@ using namespace std;
 #define SHMSIZE 4294967296
 #define MAX_COUNT 8192
 #define CONSUMER_COUNT 10
-#define PRODUCER_TIMEOUT 25
-#define CONSUMER_TIMEOUT 25
+#define PRODUCER_TIMEOUT 50
+#define CONSUMER_TIMEOUT 30
 
 void* global_gptr;
 
