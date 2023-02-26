@@ -166,8 +166,8 @@ int main(int argc, char** argv)
     // cout<<gptr->nodeCount<<endl;
     uncolor();
     // gptr->show();
-    random_device dre;
-    mt19937 gen(dre());
+    random_device rd;
+    mt19937 gen(rd());
     uniform_int_distribution<> distm(10,30);
     uniform_int_distribution<> distk(1,20);
     vector<int> weights;
