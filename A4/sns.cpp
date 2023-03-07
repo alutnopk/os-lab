@@ -69,7 +69,9 @@ int main() {
     // Wait for main thread to finish
     // pthread_join(mainThread, NULL);
 
-    cout<<sizeof(Graph)<<endl;
+    Graph g;
+    g.init("musae_git_edges.csv");
+    g.print_graph();
 
     // gptr.init("musae_git_edges.csv");
     // gptr.populate_wall();
