@@ -1,6 +1,7 @@
 
 #include "headers.h"
 
+Graph gptr;
 
 //pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 //pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -68,24 +69,14 @@ int main() {
     // Wait for main thread to finish
     // pthread_join(mainThread, NULL);
 
-    // cout<<sizeof(Graph)<<endl;
+    cout<<sizeof(Graph)<<endl;
 
-    Graph *gptr;
-    int shmid;
-    
-    shmid = shmget(IPC_PRIVATE, SHMSIZE, IPC_CREAT | 0666);
-    if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
-
-    gptr = (Graph*)shmat(shmid, NULL, 0);
-    if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
-
-    cout<<"Shared memory segment successfully created, shmid: "<<shmid<<endl;
+    // gptr.init("musae_git_edges.csv");
+    // gptr.populate_wall();
     // gptr->init("musae_git_edges.csv");
     // gptr->print_wall();
     // cout<<gptr->nodeCount<<endl;
     // cout<<gptr->nodelist[0].current;
 
-    shmdt(gptr);
-    shmctl(shmid, IPC_RMID, NULL);
     return 0;
 }
