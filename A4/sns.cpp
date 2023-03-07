@@ -1,23 +1,31 @@
-#include <iostream>
-#include <cstring>
-#include <vector>
-#include <pthread.h>
-#include <unistd.h>
-#include <mutex>
-#include <condition_variable>
-#include <semaphore.h>
-#include <fcntl.h>
 
-using std::cout;
-using std::cin;
+#include "headers.h"
+
 
 //pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 //pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
+
+void* userSimulator(void*) {
+    // Implement userSimulator thread here
+    return NULL;
+}
+
+void* readPost(void*) {
+    // Implement readPost thread here
+    return NULL;
+}
+
+void* pushUpdate(void*) {
+    // Implement pushUpdate thread here
+    return NULL;
+}
+
+
 void* mainThread(void*) {
 
     //load the graph from the musae_git_edges.csv file
-    
+
 
 
     // Create userSimulator thread
@@ -45,37 +53,39 @@ void* mainThread(void*) {
         pthread_join(pushThreads[i], NULL);
     }
 
-
-
     return NULL;
 }
 
-void* userSimulator(void*) {
-    // Implement userSimulator thread here
-    return NULL;
-}
-
-void* readPost(void*) {
-    // Implement readPost thread here
-    return NULL;
-}
-
-void* pushUpdate(void*) {
-    // Implement pushUpdate thread here
-    return NULL;
-}
 
 
 
 int main() {
     
     // Create Main thread
-    pthread_t mainThread;
-    pthread_create(&mainThread, NULL, NULL, NULL);
+    // pthread_t mainThread;
+    // pthread_create(&mainThread, NULL, NULL, NULL);
 
     // Wait for main thread to finish
-    pthread_join(mainThread, NULL);
+    // pthread_join(mainThread, NULL);
 
+    // cout<<sizeof(Graph)<<endl;
+
+    Graph *gptr;
+    int shmid;
     
+    shmid = shmget(IPC_PRIVATE, SHMSIZE, IPC_CREAT | 0666);
+    if(shmid == -1){ cerr<<"ERROR: Failure in shared memory allocation."<<endl; return 1; }
+
+    gptr = (Graph*)shmat(shmid, NULL, 0);
+    if(!gptr){ cerr<<"ERROR: Failure in attachment of shared memory to virtual address space."<<endl; return 1; }
+
+    cout<<"Shared memory segment successfully created, shmid: "<<shmid<<endl;
+    // gptr->init("musae_git_edges.csv");
+    // gptr->print_wall();
+    // cout<<gptr->nodeCount<<endl;
+    // cout<<gptr->nodelist[0].current;
+
+    shmdt(gptr);
+    shmctl(shmid, IPC_RMID, NULL);
     return 0;
 }
