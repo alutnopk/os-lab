@@ -26,33 +26,33 @@ void* pushUpdate(void*) {
 void* mainThread(void*) {
 
     //load the graph from the musae_git_edges.csv file
+    gptr.init("musae_git_edges.csv");
+    gptr.print_graph();
 
+    // // Create userSimulator thread
+    // pthread_t userThread;
+    // pthread_create(&userThread, NULL, userSimulator, NULL);
 
+    // // Create pool of 10 readPost threads
+    // std::vector<pthread_t> readThreads(10);
+    // for (int i = 0; i < 10; i++) {
+    //     pthread_create(&readThreads[i], NULL, readPost, NULL);
+    // }
 
-    // Create userSimulator thread
-    pthread_t userThread;
-    pthread_create(&userThread, NULL, userSimulator, NULL);
+    // // Create pool of 25 pushUpdate threads
+    // std::vector<pthread_t> pushThreads(25);
+    // for (int i = 0; i < 25; i++) {
+    //     pthread_create(&pushThreads[i], NULL, pushUpdate, NULL);
+    // }
 
-    // Create pool of 10 readPost threads
-    std::vector<pthread_t> readThreads(10);
-    for (int i = 0; i < 10; i++) {
-        pthread_create(&readThreads[i], NULL, readPost, NULL);
-    }
-
-    // Create pool of 25 pushUpdate threads
-    std::vector<pthread_t> pushThreads(25);
-    for (int i = 0; i < 25; i++) {
-        pthread_create(&pushThreads[i], NULL, pushUpdate, NULL);
-    }
-
-    // Wait for all threads to finish
-    pthread_join(userThread, NULL);
-    for (int i = 0; i < 10; i++) {
-        pthread_join(readThreads[i], NULL);
-    }
-    for (int i = 0; i < 25; i++) {
-        pthread_join(pushThreads[i], NULL);
-    }
+    // // Wait for all threads to finish
+    // pthread_join(userThread, NULL);
+    // for (int i = 0; i < 10; i++) {
+    //     pthread_join(readThreads[i], NULL);
+    // }
+    // for (int i = 0; i < 25; i++) {
+    //     pthread_join(pushThreads[i], NULL);
+    // }
 
     return NULL;
 }
@@ -63,13 +63,12 @@ void* mainThread(void*) {
 int main() {
     
     // Create Main thread
-    // pthread_t mainThread;
-    // pthread_create(&mainThread, NULL, NULL, NULL);
+    pthread_t mThread;
+    pthread_create(&mThread, NULL, mainThread, NULL);
 
     // Wait for main thread to finish
-    // pthread_join(mainThread, NULL);
+    pthread_join(mThread, NULL);
 
-    cout<<sizeof(Graph)<<endl;
 
     // gptr.init("musae_git_edges.csv");
     // gptr.populate_wall();

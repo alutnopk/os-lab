@@ -31,47 +31,56 @@ int Graph::init(string filepath)
     {
         return -1; // error opening file
     }
-    int k = 0;
+    // int k = 0;
     if (fs.is_open())
     {
         string line;
         int x, y;
         getline(fs, line); // skip first line (header)
-        while(getline(fs, line))
+        while (getline(fs, line))
         {
-            // k++;
-            // if(k==1) continue; // skip first line (header)
-            // read x,y from input file
             stringstream slin(line);
             string token;
             getline(slin, token, ',');
             x = stoi(token);
             getline(slin, token, ',');
             y = stoi(token);
-            
-            // cout << x << " " << y << endl;
-            
-            bool found = false;
+
+            bool foundx = false, foundy = false;
             for (auto &node : nodelist)
             {
                 if (node.current == x)
                 {
                     node.nbrs.push_back(y);
-                    found = true;
-                    break;
+                    foundx = true;
                 }
+                if (node.current == y)
+                {
+                    node.nbrs.push_back(x);
+                    foundy = true;
+                }
+                if (foundx && foundy)
+                    break;
             }
-            if (!found)
+            if (!foundx)
             {
-                AdjList node;
-                node.current = x;
-                node.nbrs.push_back(y);
-                nodelist.push_back(node);
+                AdjList newnode;
+                newnode.current = x;
+                newnode.nbrs.push_back(y);
+                nodelist.push_back(newnode);
             }
-            
+            if (!foundy)
+            {
+                AdjList newnode;
+                newnode.current = y;
+                newnode.nbrs.push_back(x);
+                nodelist.push_back(newnode);
+            }
+            foundx = false;
+            foundy = false;
         }
     }
-   
+
     return 0; // success
 }
 
@@ -92,7 +101,7 @@ int main()
 {
     Graph g;
     g.init("musae_git_edges.csv");
-    // g.print_graph();
+    g.print_graph();
     // cout << g.nodelist.size() << endl;
     return 0;
 }
