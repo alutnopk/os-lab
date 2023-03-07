@@ -98,8 +98,7 @@ int Graph::init(string filepath)
             x = stoi(token);
             getline(slin, token, ',');
             y = stoi(token);
-            // cout<<x<<" "<<y<<endl;
-            // find x and y in graph if x and y both are found in the graph, add y to x's neighbor list and vice versa
+
             bool foundx = false, foundy = false;
             for (auto &node : nodelist)
             {
@@ -115,23 +114,23 @@ int Graph::init(string filepath)
                 }
                 if (foundx && foundy)
                     break;
-                if (!foundx)
-                {
-                    AdjList newnode;
-                    newnode.current = x;
-                    newnode.nbrs.push_back(y);
-                    nodelist.push_back(newnode);
-                }
-                if (!foundy)
-                {
-                    AdjList newnode;
-                    newnode.current = y;
-                    newnode.nbrs.push_back(x);
-                    nodelist.push_back(newnode);
-                }
-                foundx=false;
-                foundy=false;
             }
+            if (!foundx)
+            {
+                AdjList newnode;
+                newnode.current = x;
+                newnode.nbrs.push_back(y);
+                nodelist.push_back(newnode);
+            }
+            if (!foundy)
+            {
+                AdjList newnode;
+                newnode.current = y;
+                newnode.nbrs.push_back(x);
+                nodelist.push_back(newnode);
+            }
+            foundx = false;
+            foundy = false;
         }
     }
 
