@@ -27,7 +27,7 @@ void* mainThread(void*) {
 
     //load the graph from the musae_git_edges.csv file
     gptr.init("musae_git_edges.csv");
-    gptr.print_graph();
+    // gptr.print_graph();
 
     // // Create userSimulator thread
     // pthread_t userThread;
