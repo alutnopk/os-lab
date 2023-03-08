@@ -144,7 +144,7 @@ void* mainThread(void*) {
     // for (int i = 0; i < 25; i++) {
     //     pthread_join(pushThreads[i], NULL);
     // }
-
+    pthread_exit(0);
     return NULL;
 }
 
@@ -159,7 +159,7 @@ int main() {
 
     // Wait for main thread to finish
     pthread_join(mThread, NULL);
-
+    cout << "Thread exited with code 0 (hopefully)" << endl;
 
     // gptr.init("musae_git_edges.csv");
     // gptr.populate_wall();
