@@ -102,8 +102,8 @@ int Graph::init(string filepath)
         getline(fs, line); // skip first line (header)
         while (getline(fs, line))
         {
-            k++;
-            if(k==11) break;
+            // k++;
+            // if(k==11) break;
             stringstream slin(line);
             string token;
             getline(slin, token, ',');
