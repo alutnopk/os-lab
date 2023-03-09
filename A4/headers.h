@@ -26,6 +26,7 @@ typedef struct Action
 {
     int actionId;
     int userId;
+    int senderDegree;
     int actionType;
     int actionTime;
 } Action; 
