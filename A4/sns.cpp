@@ -1,6 +1,6 @@
 
 #include "headers.h"
-#include <cmath>
+
 
 #define G_FEEDSIZE 694200
 
@@ -12,8 +12,8 @@ pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutexlock = PTHREAD_MUTEX_INITIALIZER;
 
 
-void* userSimulator(void*) {
-
+void* userSimulator(void*)
+{
     //create file named "sns.log" and write in it using fstream
     fstream file;
     file.open("sns.log", ios::out);
@@ -34,7 +34,7 @@ void* userSimulator(void*) {
                 for(int j=0;j<n;j++)
                 {
                     int action = rand()%3;
-                        Action newAct;             
+                    Action newAct;             
                     if(action==0)
                     {
                         //generate post
@@ -105,19 +105,22 @@ void* userSimulator(void*) {
     return NULL;
 }
 
-void* readPost(void*) {
+void* readPost(void*)
+{
     // Implement readPost thread here
 
     return NULL;
 }
 
-void* pushUpdate(void*) {
+void* pushUpdate(void*)
+{
     // Implement pushUpdate thread here
     return NULL;
 }
 
-
-void* mainThread(void*) {
+int main()
+{
+    // This *is* the main thread
 
     //load the graph from the musae_git_edges.csv file
     gptr.init("musae_git_edges.csv");
@@ -128,7 +131,7 @@ void* mainThread(void*) {
     // Create userSimulator thread
     pthread_t userThread;
     pthread_create(&userThread, NULL, userSimulator, NULL);
-    // cout<<"userSimulator thread created"<<endl;
+    cout<<"userSimulator thread created"<<endl;
     
     // // Create pool of 25 pushUpdate threads
     // std::vector<pthread_t> pushThreads(25);
@@ -143,7 +146,7 @@ void* mainThread(void*) {
     // }
 
     // // Wait for all threads to finish
-    pthread_join(userThread, NULL);
+    // pthread_join(userThread, NULL);
     // for (int i = 0; i < 25; i++) {
     //     pthread_join(pushThreads[i], NULL);
     // }
@@ -151,23 +154,8 @@ void* mainThread(void*) {
     // for (int i = 0; i < 10; i++) {
     //     pthread_join(readThreads[i], NULL);
     // }
-    
 
-    return NULL;
-}
-
-
-
-
-int main() {
-    
-    // Create Main thread
-    pthread_t mThread;
-    pthread_create(&mThread, NULL, mainThread, NULL);
-
-    // Wait for main thread to finish
-    pthread_join(mThread, NULL);
-
+    /////////////////////////////
 
     // gptr.init("musae_git_edges.csv");
     // gptr.populate_wall();
