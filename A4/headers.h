@@ -24,6 +24,8 @@ using namespace std;
 #define MAX_NODES 37700
 #define MAX_EDGES 289003
 #define MAX_NBRS 9458
+#define AVG_DEG 15
+#define AVG_ACTIONS 36
 #define WALL_SIZE 69420
 #define FEED_SIZE 69420
 int x, y;
@@ -127,7 +129,7 @@ int Graph::init(string filepath)
 {
     srand(time(NULL));
     fstream fs;
-    // int x, y;
+    int x, y;
     fs.open(filepath, ios::in);
     if (!fs)
     {
@@ -162,27 +164,26 @@ int Graph::init(string filepath)
 
 void Graph::print_graph()
 {
-    // int maxnbrs = 0;
-    // int idx=-1;
+    // double sumnbrs = 0;
+    // double totalact = 0;
     for(int i=0; i<nodeCount; i++)
     {
         AdjList& inode = nodelist[i];
         if(inode.current == -1) continue;
-        int k = 0;
-        cout << inode.current << ": ";
+        // cout << inode.current << ": ";
         // cout << inode.orderType;
         for (auto &nbr : inode.nbrs)
         {
-            cout << nbr << " ";
-            k++;
+            // cout << nbr << " ";
+            // sumnbrs++;
         }
-        // if(k>maxnbrs)
-        // {
-        //     maxnbrs = k; idx = inode.current;
-        // }
-        cout << endl;
+        // cout<<endl;
+        // sumnbrs += inode.degree;
+        // totalact += 10*(1 + log2(inode.degree));
     }
-    // cout<<"max neighbor count is: "<<maxnbrs<<" at "<<idx<<endl; 
+
+    // cout<<"avg nbr count is: "<<(sumnbrs/nodeCount)<<endl; 
+    // cout<<"avg action count is: "<<(totalact/nodeCount)<<endl; 
 }
 
 #endif
