@@ -6,11 +6,13 @@
 Graph gptr;
 
 queue<Action> globalFeed;
-queue<Action> unreadFeed;
+unordered_set<int> unreadNodes;
 // TODO: Check if static initializers work correctly
 pthread_mutex_t mutexGlobalFeed = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexSnslog = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condGlobalFeed = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutexUnreadNodes = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condUnreadNodes = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutexSnslog = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexNodeFeed[MAX_NODES];
 
 void* userSimulator(void*)
@@ -82,48 +84,68 @@ void* userSimulator(void*)
 void* pushUpdate(void* arg)
 {
     int idx = *((int*)arg);
-    vector<Action> allNodeActions;
+    vector<Action> currentActions; // action list to be currently sent by this thread
     while(1)
     {
-        cout<<idx<<" is waiting..."<<endl;
+        // cout<<idx<<" is waiting..."<<endl;
+        currentActions.clear();
         Action act;
-        allNodeActions.clear();
+        int currentNode;
+        fstream snslog;
+        // pop action from globalFeed queue
         pthread_mutex_lock(&mutexGlobalFeed);
-        while(globalFeed.size()==0)
+        while(globalFeed.empty())
             pthread_cond_wait(&condGlobalFeed, &mutexGlobalFeed);
-        // TODO: decide if popping one action is enough
-        act = globalFeed.front();
-        globalFeed.pop();
+        while(!globalFeed.empty())
+        {
+            act = globalFeed.front(); 
+            globalFeed.pop();
+            currentActions.push_back(act);
+            // Keep popping actions from the same sender node
+            currentNode = act.userId; if(currentNode != globalFeed.front().userId) break;
+        }
         pthread_mutex_unlock(&mutexGlobalFeed);
         pthread_cond_broadcast(&condGlobalFeed);
-        for(auto &nbr: gptr.nodelist[act.userId].nbrs) // for each neighbor
+
+        for(auto &nbr: gptr.nodelist[currentNode].nbrs) // for each neighbor
         {
             // TODO: add priority condition here
+            // push act into each neighbor
             pthread_mutex_lock(&mutexNodeFeed[nbr]);
-            gptr.nodelist[nbr].feed.push(act);
+            for(Action act: currentActions)
+            {
+                gptr.nodelist[nbr].feed.push(act);
+            }
             pthread_mutex_unlock(&mutexNodeFeed[nbr]);
-        }
 
-        fstream snslog;
-        pthread_mutex_lock(&mutexSnslog);
-        snslog.open("sns.log", ios::out | ios::app);
-        for(int i=0; i<allNodeActions.size(); i++)
-        {
-            Action a = allNodeActions[i];
-            snslog<<"Pushed action "<<action_types[a.actionType]<<" from node "<<a.userId<<" to its neighbor \n"; // TODO: add neighbor ID here
-            cout<<"Pushed action "<<action_types[a.actionType]<<" from node "<<a.userId<<" to its neighbor \n";
+            // Add node to unread feed nodes set
+            if(!gptr.nodelist[nbr].feed.empty())
+            {
+                pthread_mutex_lock(&mutexUnreadNodes);
+                    unreadNodes.insert(nbr);
+                pthread_mutex_unlock(&mutexUnreadNodes);
+                pthread_cond_broadcast(&condUnreadNodes);
+            }
+            // write to sns.log
+            pthread_mutex_lock(&mutexSnslog);
+            snslog.open("sns.log", ios::out | ios::app);
+            for(Action act: currentActions)
+            {
+                snslog<<"Pushed action "<<action_types[act.actionType]<<"no. "<<act.actionId<<" from node "<<act.userId<<" to its neighbor "<<nbr<<"\n";
+                // cout<<"Pushed action "<<action_types[act.actionType]<<" from node "<<act.userId<<" to its neighbor "<<nbr<<"\n";
+            }
+            snslog<<endl;
+            snslog.close();
+            pthread_mutex_unlock(&mutexSnslog);
         }
-        snslog<<endl;
-        snslog.close();
-        pthread_mutex_unlock(&mutexSnslog);
     }
-
     pthread_exit(0);
 }
 
 void* readPost(void* arg)
 {
-    cout<<endl<<""<<endl;
+    int idx = *((int*)arg);
+
     pthread_exit(0);
 }
 
@@ -147,6 +169,9 @@ int main()
     {
         pthread_mutex_init(&mutexNodeFeed[i], NULL);
     }
+
+    queue<Action> empty; swap(globalFeed, empty); // initializing empty queue
+    unreadNodes.clear();
 
     // Create userSimulator thread
     pthread_create(&userThread, NULL, userSimulator, NULL);
