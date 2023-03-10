@@ -130,11 +130,8 @@ int Graph::init(string filepath)
         getline(fs, line); // skip first line (header)
         while (getline(fs, line))
         {
-<<<<<<< HEAD
             // k++;
             // if(k==11) break;
-=======
->>>>>>> 8941b6f05c19578da1bc6d34688316571ea32036
             stringstream slin(line);
             string token;
             getline(slin, token, ',');
