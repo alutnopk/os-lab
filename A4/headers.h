@@ -21,7 +21,9 @@
 
 using namespace std;
 
-#define MAX_COUNT 37700
+#define MAX_NODES 37700
+#define MAX_EDGES 289003
+#define MAX_NBRS 9458
 #define WALL_SIZE 69420
 #define FEED_SIZE 69420
 int x, y;
@@ -32,6 +34,10 @@ typedef enum ActionType
     COMMENT,
     LIKE
 } ActionType;
+
+void* userSimulator(void*);
+void* pushUpdate(void*);
+void* readPost(void*);
 
 // struct to store action
 typedef struct Action
@@ -70,16 +76,16 @@ class Graph
     
     Graph()
     {
-        nodeCount = MAX_COUNT;
-        nodelist = vector<AdjList>(MAX_COUNT);
-        for(int i=0; i<MAX_COUNT; i++)
+        nodeCount = MAX_NODES;
+        nodelist = vector<AdjList>(MAX_NODES);
+        for(int i=0; i<MAX_NODES; i++)
         {
             nodelist[i].current = -1;
             nodelist[i].orderType = -1;
             nodelist[i].postNo = 0;
             nodelist[i].likesNo = 0;
             nodelist[i].commentsNo = 0;
-            nodelist[i].nbrs = unordered_set<int>(MAX_COUNT);
+            nodelist[i].nbrs = unordered_set<int>(MAX_NBRS); // calculated from the graph
             nodelist[i].degree = 0;
             nodelist[i].wall = queue<Action>(); // TODO: design size
             nodelist[i].feed = queue<Action>(); // TODO: design size
@@ -153,18 +159,27 @@ int Graph::init(string filepath)
 
 void Graph::print_graph()
 {
+    // int maxnbrs = 0;
+    // int idx=-1;
     for(int i=0; i<nodeCount; i++)
     {
         AdjList& inode = nodelist[i];
         if(inode.current == -1) continue;
+        int k = 0;
         cout << inode.current << ": ";
         // cout << inode.orderType;
         for (auto &nbr : inode.nbrs)
         {
             cout << nbr << " ";
+            k++;
         }
+        // if(k>maxnbrs)
+        // {
+        //     maxnbrs = k; idx = inode.current;
+        // }
         cout << endl;
     }
+    // cout<<"max neighbor count is: "<<maxnbrs<<" at "<<idx<<endl; 
 }
 
 #endif
