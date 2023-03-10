@@ -3,5 +3,5 @@ sns: sns.cpp
 run: sns sns.cpp
 	./sns
 clean:
-	rm sns
+	rm sns sns.log
 .PHONY: run

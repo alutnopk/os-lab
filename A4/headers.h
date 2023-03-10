@@ -35,7 +35,7 @@ typedef enum ActionType
     LIKE
 } ActionType;
 
-char* action_types[] = {"POST", "COMMENT", "LIKE"};
+string action_types[] = {"POST", "COMMENT", "LIKE"};
 
 void* userSimulator(void*);
 void* pushUpdate(void*);

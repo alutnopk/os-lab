@@ -13,6 +13,7 @@ pthread_mutex_t globalFeedMutex = PTHREAD_MUTEX_INITIALIZER, snslogMutex = PTHRE
 
 void* userSimulator(void*)
 {
+    cout<<endl<<"User simulator thread active...\n"<<endl;
     // create file named "sns.log" and write in it using fstream
     fstream snslog;
     // Implement userSimulator thread here
@@ -31,7 +32,6 @@ void* userSimulator(void*)
     while(1)
     {
         allNodeActions.clear();
-        // cout<<"userSimulator thread running in loop"<<endl;
         for (int i=0;i<100;i++)
         {
             currentNode = distNode(gen); // assumption: random choices are distinct
@@ -41,9 +41,9 @@ void* userSimulator(void*)
                 currentAction.userId = currentNode;
                 int actNo = distAction(gen);
                 currentAction.actionType = actNo;
-                currentAction.actionId = (gptr.nodelist[currentNode].actionCount[actNo])++; // need to test
+                currentAction.actionId = (gptr.nodelist[currentNode].actionCount[actNo])++;
                 currentAction.userDegree = gptr.nodelist[currentNode].degree;
-                currentAction.actionTime = time(NULL);
+                currentAction.actionTime = time(NULL); // TODO: Consider using a high-res clock
                 // push this action to the wall of the current node and to allNodeActions
                 gptr.nodelist[currentNode].wall.push(currentAction);
                 allNodeActions.push_back(currentAction);
@@ -57,18 +57,20 @@ void* userSimulator(void*)
         }
         pthread_mutex_unlock(&globalFeedMutex);
         
-        // print to sns.log
+        // print to sns.log and terminal
         pthread_mutex_lock(&snslogMutex);
         snslog.open("sns.log", ios::out);
         for(int i=0; i<allNodeActions.size(); i++)
         {
             Action a = allNodeActions[i];
-            snslog<<"User "<<a.userId<<" of degree "<<a.userDegree<<" has performed "<<action_types[a.actionType]<<" no. "<<a.actionId<<" at timestamp"<<a.actionTime<<"\n";
+            snslog<<"User "<<a.userId<<" of degree "<<a.userDegree<<" has performed "<<action_types[a.actionType]<<" no. "<<a.actionId<<" at timestamp "<<a.actionTime<<"\n";
+            cout<<"User "<<a.userId<<" of degree "<<a.userDegree<<" has performed "<<action_types[a.actionType]<<" no. "<<a.actionId<<" at timestamp "<<a.actionTime<<"\n";
         }
         snslog<<endl;
         snslog.close();
         pthread_mutex_unlock(&snslogMutex);
-
+        
+        cout<<endl<<"User simulator going to sleep...\n"<<endl;
         sleep(120);
     }
     pthread_exit(0);
