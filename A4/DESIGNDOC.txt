@@ -18,7 +18,8 @@ This class contains the constructor which initializes the class Graph.
 
 This class has a funciton init which basically loads the graph from the file to memory
 We used class for graph so that we can create our own function for graph for easy accessibility.
-
+--------------------------------------------------------------------------------------------------------
+For "sns.cpp"
 In the graph we have MAX number of nodes = 37700 and MAX edges = 289003.
 In the whole graph we have MAX degree as 9458
 For the size of wall and feed queue we just assigned the almost the double the value of MAX_NODES in the graph
