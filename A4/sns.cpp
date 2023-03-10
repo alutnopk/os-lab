@@ -1,7 +1,6 @@
 
 #include "headers.h"
 
-
 #define G_FEEDSIZE 694200
 
 Graph gptr;
@@ -17,6 +16,7 @@ void* userSimulator(void*)
     //create file named "sns.log" and write in it using fstream
     fstream file;
     file.open("sns.log", ios::out);
+    vector<Action> temp;
     // Implement userSimulator thread here
     //choose 100 random nodes from the graph (between node ids 1 and 37,700). Then for each node, generate n actions, n needs to be proportional to the log 2 (degree of the node)
     while(1)
@@ -99,6 +99,14 @@ void* userSimulator(void*)
                 }
             }
         }
+        // pthread_mutex_lock(&mutexlock);
+        // while (globalFeed.size() >= G_FEEDSIZE)
+        //     pthread_cond_wait(&cv, &mutexlock);
+        // for (int i = 0; i < temp.size(); i++)
+        // {
+        //     globalFeed.push(temp[i]);
+        // }
+        // pthread_mutex_unlock(&mutexlock);
         sleep(120);
     }
 
@@ -145,8 +153,8 @@ int main()
     //     pthread_create(&readThreads[i], NULL, readPost, NULL);
     // }
 
-    // // Wait for all threads to finish
-    // pthread_join(userThread, NULL);
+    // Wait for all threads to finish
+    pthread_join(userThread, NULL);
     // for (int i = 0; i < 25; i++) {
     //     pthread_join(pushThreads[i], NULL);
     // }
