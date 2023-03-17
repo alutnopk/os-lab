@@ -1,6 +1,7 @@
 #include "headers.h"
 
-int main()
+void* cleaner_routine(void* arg)
 {
-    return 0;
+    int idx = *((int*)arg);
+    pthread_exit(0);
 }

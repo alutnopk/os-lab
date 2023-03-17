@@ -1,14 +1,19 @@
 CC = g++
-CFLAGS = -Wall
+CFLAGS = -Wall -Wextra
 RM = rm -f
+HEADERS = headers.h
+MAIN = main.cpp
+GUEST = guest.cpp
+CLEANER = cleaner.cpp
 
-guest: guest.cpp headers.h
-	$(CC) -I. guest.cpp -o guest
-cleaner: cleaner.cpp headers.h
-	$(CC) -I. cleaner.cpp -o cleaner
-main: main.cpp guest cleaner headers.h
-	$(CC) -I. main.cpp -o main
+guest: $(GUEST) $(HEADERS)
+	$(CC) $(CFLAGS) -I. $(GUEST) -o guest
+cleaner: $(CLEANER) $(HEADERS)
+	$(CC) $(CFLAGS) -I. $(CLEANER) -o cleaner
+main: $(MAIN) guest cleaner $(HEADERS)
+	$(CC) $(CFLAGS) -I. $(MAIN) -o main
 run: main
 	./main
 clean:
 	$(RM) main guest cleaner
+.PHONY: run
