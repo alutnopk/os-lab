@@ -12,14 +12,13 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
     // thread creation
     for(int i=0; i<Y; i++)
     {
+        // TODO: figure out how to assign random distinct priorities (perhaps shuffle a list of numbers 1 to Y)
         int ret = pthread_create(&guests[i], NULL, guest_routine, (void*)&i);
-        cout<<i<<endl;
         if(ret) { cerr<<"Failure in guest thread creation"<<endl; return EXIT_FAILURE; }
     }
     for(int i=0; i<X; i++)
     {
         int ret = pthread_create(&cleaners[i], NULL, cleaner_routine, (void*)&i);
-        cout<<i<<endl;
         if(ret) { cerr<<"Failure in cleaner thread creation"<<endl; return EXIT_FAILURE; }
     }
 
@@ -27,7 +26,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 
     if(sem_init(&sem_guest, 0, N) == -1)
     { cerr<<"Failure in semaphore initialization"<<endl; return EXIT_FAILURE; }
-    cout<<"yay"<<endl;
+
 
     // thread cleanup
     for(int i=0; i<Y; i++)
@@ -46,7 +45,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 
 void parse_input(int argc, char** argv, long &X, long &N, long &Y)
 {
-    if(argc != 4) throw runtime_error("Expected usage: ./<exec> <X> <N> <Y>");
+    if(argc != 4) throw runtime_error("Expected usage: ./a.out <X> <N> <Y>");
     X = strtol(argv[1], NULL, 10);
     N = strtol(argv[2], NULL, 10);
     Y = strtol(argv[3], NULL, 10);
