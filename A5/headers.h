@@ -19,6 +19,8 @@ using namespace std;
 
 extern sem_t sem_guest;
 extern pthread_mutex_t mutex_hotel;
+extern long X, N, Y;
+
 typedef struct _Room
 {
     int guest_tid;
@@ -27,6 +29,7 @@ typedef struct _Room
 } Room;
 
 extern vector<Room> hotel;
+
 
 void *guest_routine(void *);
 void *cleaner_routine(void *);

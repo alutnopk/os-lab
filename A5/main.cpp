@@ -2,9 +2,12 @@
 sem_t sem_guest;
 vector<Room> hotel;
 pthread_mutex_t mutex_hotel = PTHREAD_MUTEX_INITIALIZER;
+
+long X, N, Y;
+
 int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 {
-    long X, N, Y;
+    
     try{ parse_input(argc, argv, X, N, Y); } // reads and validates command line inputs
     catch(runtime_error& e) { cerr<<e.what()<<endl; return EXIT_FAILURE; }
 
@@ -20,6 +23,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
         hotel[i].occupancy = 0;
     }
     // thread creation
+    
     for (int i = 0; i < Y; i++)
     {
         // TODO: figure out how to assign random distinct priorities (perhaps shuffle a list of numbers 1 to Y)
