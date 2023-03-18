@@ -2,8 +2,7 @@
 
 void* cleaner_routine(void* arg)
 {
-    int idx = *((int*)arg);
-    cout<<"Cleaner "<<idx<<" begins"<<endl;
-    
+    int idx = *(int*)arg;
+
     pthread_exit(0);
 }

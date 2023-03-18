@@ -8,5 +8,5 @@ main: main.cpp producer consumer headers.h
 run: main
 	./main
 clean:
-	rm main producer consumer consumer*.txt
+	rm -f main producer consumer consumer*.txt
 .PHONY: run

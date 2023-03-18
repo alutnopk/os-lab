@@ -1,25 +1,37 @@
 #include "headers.h"
 sem_t sem_guest;
+vector<Room> hotel;
+pthread_mutex_t mutex_hotel = PTHREAD_MUTEX_INITIALIZER;
 int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 {
     long X, N, Y;
     try{ parse_input(argc, argv, X, N, Y); } // reads and validates command line inputs
     catch(runtime_error& e) { cerr<<e.what()<<endl; return EXIT_FAILURE; }
-    
-    vector<pthread_t> guests(Y);
+
+    // initialization
     vector<pthread_t> cleaners(X);
+    vector<Room> hotel(N);
+    vector<pthread_t> guests(Y);
     
+    for(int i=0; i<N; i++)
+    {
+        hotel[i].guest_tid = -1;
+        hotel[i].priority = -1;
+        hotel[i].occupancy = 0;
+    }
     // thread creation
     for(int i=0; i<Y; i++)
     {
         // TODO: figure out how to assign random distinct priorities (perhaps shuffle a list of numbers 1 to Y)
         int ret = pthread_create(&guests[i], NULL, guest_routine, (void*)&i);
         if(ret) { cerr<<"Failure in guest thread creation"<<endl; return EXIT_FAILURE; }
+        cout<<"Guest thread "<<i<<" created"<<endl;
     }
     for(int i=0; i<X; i++)
     {
         int ret = pthread_create(&cleaners[i], NULL, cleaner_routine, (void*)&i);
         if(ret) { cerr<<"Failure in cleaner thread creation"<<endl; return EXIT_FAILURE; }
+        cout<<"Cleaner thread "<<i<<" created"<<endl;
     }
 
     // initialize semaphores here
@@ -27,17 +39,20 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
     if(sem_init(&sem_guest, 0, N) == -1)
     { cerr<<"Failure in semaphore initialization"<<endl; return EXIT_FAILURE; }
 
+    cout<<"Semaphore created"<<endl;
 
     // thread cleanup
     for(int i=0; i<Y; i++)
     {
         int ret = pthread_join(guests[i], NULL);
         if(ret) { cerr<<"Failure in guest thread join"<<endl; return EXIT_FAILURE; }
+        cout<<"Guest thread "<<i<<" exited"<<endl;
     }
     for(int i=0; i<X; i++)
     {
         int ret = pthread_join(guests[i], NULL);
         if(ret) { cerr<<"Failure in cleaner thread join"<<endl; return EXIT_FAILURE; }
+        cout<<"Cleaner thread "<<i<<" exited"<<endl;
     }
 
     return 0;

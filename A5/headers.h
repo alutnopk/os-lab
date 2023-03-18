@@ -18,9 +18,12 @@
 using namespace std;
 
 extern sem_t sem_guest;
+extern pthread_mutex_t mutex_hotel;
+extern vector<Room> hotel;
 typedef struct _Room
 {
-    int guest;
+    int guest_tid;
+    int priority;
     int occupancy;
 } Room;
 
