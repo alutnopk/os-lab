@@ -24,8 +24,9 @@ typedef struct _Room
     int occupancy;
 } Room;
 
-void* guest_routine(void*);
-void* cleaner_routine(void*);
-void parse_input(int argc, char** argv, long &X, long &N, long &Y);
+
+void *guest_routine(void *);
+void *cleaner_routine(void *);
+void parse_input(int argc, char **argv, long &X, long &N, long &Y);
 
 #endif
