@@ -14,19 +14,39 @@
 #include <climits>
 #include <chrono>
 #include <random>
+#include <signal.h>
+#include <assert.h>
 
 using namespace std;
 
-extern sem_t sem_guest;
-extern pthread_mutex_t mutex_hotel;
-extern vector<Room> hotel;
+extern long X, N, Y;
 typedef struct _Room
 {
-    int guest_tid;
+    pthread_t current_guest;
     int priority;
     int occupancy;
 } Room;
 
+typedef struct _Hotel
+{
+    vector<Room> rooms;
+    int tot_occupancy;
+} Hotel;
+
+extern vector<pthread_t> cleaners;
+extern Hotel hotel;
+extern vector<pthread_t> guests;
+
+extern sem_t sem_guest;
+extern sem_t sem_cleaner;
+extern pthread_mutex_t mutex_hotel;
+
+void init_hotel(Hotel &h, int n);
+void book_room(Hotel &h, int n, pthread_t g, int pr);
+void vacate_room(Hotel &h, int n, pthread_t g);
+void evict(Hotel &h, int n, pthread_t g, int pr);
+
+void guest_sighandler(int signum);
 void* guest_routine(void*);
 void* cleaner_routine(void*);
 void parse_input(int argc, char** argv, long &X, long &N, long &Y);
