@@ -19,7 +19,6 @@
 
 using namespace std;
 
-extern long X, N, Y;
 typedef struct _Room
 {
     pthread_t current_guest;
@@ -33,6 +32,8 @@ typedef struct _Hotel
     int tot_occupancy;
 } Hotel;
 
+extern long X, N, Y;
+
 extern vector<pthread_t> cleaners;
 extern Hotel hotel;
 extern vector<pthread_t> guests;
@@ -40,15 +41,17 @@ extern vector<pthread_t> guests;
 extern sem_t sem_guest;
 extern sem_t sem_cleaner;
 extern pthread_mutex_t mutex_hotel;
+extern pthread_cond_t cond_occupancy;
 
-void init_hotel(Hotel &h, int n);
-void book_room(Hotel &h, int n, pthread_t g, int pr);
-void vacate_room(Hotel &h, int n, pthread_t g);
+void init(Hotel &h, int n);
+void book(Hotel &h, int n, pthread_t g, int pr);
+void vacate(Hotel &h, int n, pthread_t g);
 void evict(Hotel &h, int n, pthread_t g, int pr);
 
 void guest_sighandler(int signum);
 void* guest_routine(void*);
 void* cleaner_routine(void*);
+
 void parse_input(int argc, char** argv, long &X, long &N, long &Y);
 
 #endif

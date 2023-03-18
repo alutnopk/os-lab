@@ -9,6 +9,7 @@ vector<pthread_t> guests;
 sem_t sem_guest;
 sem_t sem_cleaner;
 pthread_mutex_t mutex_hotel = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_occupancy = PTHREAD_COND_INITIALIZER;
 
 int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 {
@@ -17,7 +18,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 
     // initialization
     cleaners = vector<pthread_t>(X);
-    init_hotel(hotel, N);
+    init(hotel, N);
     guests = vector<pthread_t>(Y);
 
     // thread creation
@@ -59,10 +60,11 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
     // destroy semaphores and mutexes
     if(sem_destroy(&sem_guest) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
     if(pthread_mutex_destroy(&mutex_hotel) == -1) { cerr<<"Failed to destroy mutex"<<endl; }
+    if(pthread_cond_destroy(&cond_occupancy) == -1) { cerr<<"Failed to destroy condition variable"<<endl; }
     
     return 0;
 }
-
+// read X, N, Y and validate them
 void parse_input(int argc, char** argv, long &X, long &N, long &Y)
 {
     if(argc != 4) throw runtime_error("Expected usage: ./a.out <X> <N> <Y>");
@@ -79,9 +81,9 @@ void parse_input(int argc, char** argv, long &X, long &N, long &Y)
 }
 
 // self-explanatory
-void init_hotel(Hotel &h, int n)
+void init(Hotel &h, int n)
 {
-    if(n <= 0) throw runtime_error("init_hotel: Cannot make hotel with n < 1");
+    if(n <= 0) throw runtime_error("init: Cannot make hotel with n < 1");
     h.rooms = vector<Room>(n);
     h.tot_occupancy = 0;
 
@@ -91,20 +93,20 @@ void init_hotel(Hotel &h, int n)
         h.rooms[i].priority = -1;
         h.rooms[i].occupancy = 0;
     }
-    for(auto x: h.rooms)
-        cout<<x.current_guest<<" "<<x.occupancy<<" "<<x.priority<<endl;
+    // for(auto x: h.rooms)
+    //     cout<<x.current_guest<<" "<<x.occupancy<<" "<<x.priority<<endl;
 }
 // locate empty room and allot to guest (only used when hotel isn't full)
-void book_room(Hotel &h, int n, pthread_t g, int pr)
+void book(Hotel &h, int n, pthread_t g, int pr)
 {
-    if(h.tot_occupancy == 2*n) throw runtime_error("book_room: All rooms have occupancy 2");
+    if(h.tot_occupancy == 2*n) throw runtime_error("book: All rooms have occupancy 2");
     int i;
     for(i=0; i<n; i++)
     {
         if( h.rooms[i].priority == -1 && h.rooms[i].occupancy < 2 )
         break;
     }
-    if(i == n) throw runtime_error("book_room: Cannot find an empty room");
+    if(i == n) throw runtime_error("book: Cannot find an empty room");
 
     h.rooms[i].current_guest = g;
     h.rooms[i].priority = pr;
@@ -112,7 +114,7 @@ void book_room(Hotel &h, int n, pthread_t g, int pr)
     h.tot_occupancy += 1;
 }
 // self-explanatory
-void vacate_room(Hotel &h, int n, pthread_t g)
+void vacate(Hotel &h, int n, pthread_t g)
 {
     int i;
     for(i=0; i<n; i++)
@@ -120,7 +122,7 @@ void vacate_room(Hotel &h, int n, pthread_t g)
         if(pthread_equal(g, h.rooms[i].current_guest))
             break;
     }
-    if(i == n) throw runtime_error("vacate_room: Could not locate guest in hotel");
+    if(i == n) throw runtime_error("vacate: Could not locate guest in hotel");
 
     h.rooms[i].current_guest = NULL;
     h.rooms[i].priority = -1;
