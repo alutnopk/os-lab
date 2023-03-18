@@ -1,10 +1,5 @@
 #include "headers.h"
 
-<<<<<<< HEAD
-int main()
-{
-    return 0;
-=======
 void* guest_routine(void* arg)
 {
     int idx = *((int*)arg);
@@ -26,5 +21,4 @@ void* guest_routine(void* arg)
     }
     
     pthread_exit(0);
->>>>>>> origin/pontu
 }

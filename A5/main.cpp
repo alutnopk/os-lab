@@ -1,10 +1,4 @@
 #include "headers.h"
-<<<<<<< HEAD
-
-int main()
-{
-    return 0;
-=======
 sem_t sem_guest;
 int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 {
@@ -62,5 +56,4 @@ void parse_input(int argc, char** argv, long &X, long &N, long &Y)
         throw runtime_error("Input integer(s) out of range");
     if(!((X>=1) && (N>X) && (Y>N)))
         throw runtime_error("Inputs must satisfy 1 <= X < N < Y\nExpected usage: ./<exec> <X> <N> <Y>");
->>>>>>> origin/pontu
 }
