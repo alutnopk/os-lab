@@ -18,12 +18,15 @@
 using namespace std;
 
 extern sem_t sem_guest;
+extern pthread_mutex_t mutex_hotel;
 typedef struct _Room
 {
-    int guest;
+    int guest_tid;
+    int priority;
     int occupancy;
 } Room;
 
+extern vector<Room> hotel;
 
 void *guest_routine(void *);
 void *cleaner_routine(void *);
