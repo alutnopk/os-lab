@@ -13,6 +13,13 @@ void* guest_routine(void* arg)
     for(;1;)
     {
         sleep(dsleep(gen));
+
+        // wait if occupancy is full
+        pthread_mutex_lock(&mutex_hotel);
+        while(hotel.tot_occupancy == 2*N)
+            pthread_cond_wait(&cond_occupancy, &mutex_hotel);
+        pthread_mutex_unlock(&mutex_hotel);
+
         int semval = -1;
         // TODO:
         // if(sem_getvalue(&sem_guest, &semval) == -1) { cerr<<"sem_getvalue failed in guest"<<endl; }

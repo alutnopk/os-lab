@@ -131,4 +131,8 @@ void vacate(Hotel &h, int n, pthread_t g)
 void evict(Hotel &h, int n, pthread_t g, int pr)
 {
     // TODO
+    for (int i=0;i<n;i++)
+    {
+        
+    }
 }
