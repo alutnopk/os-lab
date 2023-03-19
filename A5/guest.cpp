@@ -35,7 +35,7 @@ void* guest_routine(void* arg)
             else
             {
                 // pthread_mutex_lock(&mutex_hotel);
-                pthread_t target = evict(hotel, N, pthread_self(), pr, targetidx);
+                pthread_t target = evict(hotel, N, pthread_self(), pr, targetidx);                
                 pthread_kill(target, SIGUSR1);
             }
             pthread_mutex_unlock(&mutex_hotel);
@@ -52,9 +52,8 @@ void* guest_routine(void* arg)
             pthread_mutex_unlock(&mutex_hotel);
             pthread_cond_signal(&cond_occupancy);
             cout<<endl<<"Guest of priority "+to_string(pr)+" has occupied a room"<<endl;
-
+            
             sleep(dstay(gen));
-
             pthread_mutex_lock(&mutex_hotel);
             vacate(hotel, N, pthread_self());
             pthread_mutex_unlock(&mutex_hotel);

@@ -152,5 +152,6 @@ pthread_t evict(Hotel &h, int n, pthread_t g, int pr,int idx)
     h.rooms[idx].current_guest = g;
     h.rooms[idx].priority = pr;
     h.rooms[idx].occupancy++;
+    hotel.tot_occupancy++;
     return temp;
 }
