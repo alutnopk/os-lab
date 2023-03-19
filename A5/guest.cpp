@@ -1,15 +1,21 @@
 #include "headers.h"
+
+int targetidx = -1;
 // runner function for guest threads
 void* guest_routine(void* arg)
 {
     // stringstream sstr;
     signal(SIGUSR1, guest_sighandler);
-    int pr = *(int*)arg; // TODO: make this the priority
+    int i = *(int*)arg; // TODO: make this the priority
 
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<> dsleep(10, 20);
     uniform_int_distribution<> dstay(10, 30);
+    uniform_int_distribution<> dpr(1, Y);
+
+    int pr = dpr(gen);
+
     for(;1;)
     {
         sleep(dsleep(gen));
@@ -26,7 +32,7 @@ void* guest_routine(void* arg)
         if(semval == 0) // now look for lower priority guests
         {
             pthread_mutex_lock(&mutex_hotel);
-            int targetidx = find_lowerpr_guest(hotel, N, pr);
+            targetidx = find_lowerpr_guest(hotel, N, pr);
             if(targetidx == -1) 
             { 
                 cout<<"No lower priority guests found"<<endl;
@@ -35,8 +41,10 @@ void* guest_routine(void* arg)
             else
             {
                 // pthread_mutex_lock(&mutex_hotel);
-                pthread_t target = evict(hotel, N, pthread_self(), pr, targetidx);                
-                pthread_kill(target, SIGUSR1);
+                pthread_cond_signal(&cond_guest_wait);
+                // pthread_mutex_unlock(&mutex_hotel);
+                pthread_t target = evict(hotel, N, pthread_self(), pr, targetidx);
+                
             }
             pthread_mutex_unlock(&mutex_hotel);
             continue;
@@ -53,7 +61,16 @@ void* guest_routine(void* arg)
             pthread_cond_signal(&cond_occupancy);
             cout<<endl<<"Guest of priority "+to_string(pr)+" has occupied a room"<<endl;
             
-            sleep(dstay(gen));
+            //sleep(dstay(gen));
+            
+            struct timespec t;
+            clock_gettime(CLOCK_REALTIME, &t);
+            t.tv_sec += dstay(gen);
+            pthread_mutex_lock(&mutex_hotel);
+            while(targetidx != i)
+            pthread_cond_timedwait(&cond_guest_wait, &mutex_hotel, &t);
+            pthread_mutex_unlock(&mutex_hotel);
+
             pthread_mutex_lock(&mutex_hotel);
             vacate(hotel, N, pthread_self());
             pthread_mutex_unlock(&mutex_hotel);
