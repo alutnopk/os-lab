@@ -42,11 +42,13 @@ extern sem_t sem_guest;
 extern sem_t sem_cleaner;
 extern pthread_mutex_t mutex_hotel;
 extern pthread_cond_t cond_occupancy;
+extern pthread_cond_t cond_guest_wait;
 
 void init(Hotel &h, int n);
 void book(Hotel &h, int n, pthread_t g, int pr);
 void vacate(Hotel &h, int n, pthread_t g);
-void evict(Hotel &h, int n, pthread_t g, int pr);
+int find_lowerpr_guest(Hotel &h, int n, int pr);
+pthread_t evict(Hotel &h, int n, pthread_t g, int pr,int idx);
 
 void guest_sighandler(int signum);
 void* guest_routine(void*);

@@ -17,19 +17,30 @@ void* guest_routine(void* arg)
         // wait if occupancy is full
         pthread_mutex_lock(&mutex_hotel);
         while(hotel.tot_occupancy == 2*N)
-            pthread_cond_wait(&cond_occupancy, &mutex_hotel);
+            pthread_cond_wait(&cond_guest_wait, &mutex_hotel);
         pthread_mutex_unlock(&mutex_hotel);
 
         int semval = -1;
         // TODO:
-        // if(sem_getvalue(&sem_guest, &semval) == -1) { cerr<<"sem_getvalue failed in guest"<<endl; }
-        // if(semval == 0) // now look for lower priority guests
-        // {
-        //     pthread_mutex_lock(&mutex_hotel);
-        //     evict(hotel, N, pthread_self(), pr);
-        //     pthread_kill(target, SIGUSR1);
-        //     pthread_mutex_unlock(&mutex_hotel);
-        // }
+        if(sem_getvalue(&sem_guest, &semval) == -1) { cerr<<"sem_getvalue failed in guest"<<endl; }
+        if(semval == 0) // now look for lower priority guests
+        {
+            pthread_mutex_lock(&mutex_hotel);
+            int targetidx = find_lowerpr_guest(hotel, N, pr);
+            if(targetidx == -1) 
+            { 
+                cout<<"No lower priority guests found"<<endl;
+                continue; 
+            }
+            else
+            {
+                // pthread_mutex_lock(&mutex_hotel);
+                pthread_t target = evict(hotel, N, pthread_self(), pr, targetidx);
+                pthread_kill(target, SIGUSR1);
+            }
+            pthread_mutex_unlock(&mutex_hotel);
+            continue;
+        }
 
         // acquire room (occupancy must NOT exceed 1)
         try

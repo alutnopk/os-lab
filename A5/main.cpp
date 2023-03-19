@@ -10,6 +10,7 @@ sem_t sem_guest;
 sem_t sem_cleaner;
 pthread_mutex_t mutex_hotel = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_occupancy = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_guest_wait = PTHREAD_COND_INITIALIZER;
 
 int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 {
@@ -127,12 +128,29 @@ void vacate(Hotel &h, int n, pthread_t g)
     h.rooms[i].current_guest = NULL;
     h.rooms[i].priority = -1;
 }
-// locate lower priority guest and yeet them out
-void evict(Hotel &h, int n, pthread_t g, int pr)
+
+// find the room with the lower priority guest
+int find_lowerpr_guest(Hotel &h, int n, int pr)
+{
+    int i,flag=-1;
+    for(i=0;i<n;i++)
+    {
+        if(h.rooms[i].priority < pr && h.rooms[i].occupancy < 2)
+        {
+            flag = i;
+            break;
+        }
+    }
+    return flag;
+}
+
+// yeet the guest out
+pthread_t evict(Hotel &h, int n, pthread_t g, int pr,int idx)
 {
     // TODO
-    for (int i=0;i<n;i++)
-    {
-        
-    }
+    pthread_t temp = h.rooms[idx].current_guest;
+    h.rooms[idx].current_guest = g;
+    h.rooms[idx].priority = pr;
+    h.rooms[idx].occupancy++;
+    return temp;
 }
