@@ -24,6 +24,7 @@ typedef struct _Room
     pthread_t current_guest;
     int priority;
     int occupancy;
+    int time;
 } Room;
 
 typedef struct _Hotel
@@ -41,6 +42,7 @@ extern vector<pthread_t> guests;
 extern sem_t sem_guest;
 extern sem_t sem_cleaner;
 extern pthread_mutex_t mutex_hotel;
+extern pthread_mutex_t total_occupancy;
 extern pthread_cond_t cond_occupancy;
 extern pthread_cond_t cond_guest_wait;
 

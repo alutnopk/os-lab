@@ -9,6 +9,7 @@ vector<pthread_t> guests;
 sem_t sem_guest;
 sem_t sem_cleaner;
 pthread_mutex_t mutex_hotel = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t total_occupancy = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_occupancy = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_guest_wait = PTHREAD_COND_INITIALIZER;
 
@@ -93,6 +94,7 @@ void init(Hotel &h, int n)
         hotel.rooms[i].current_guest = NULL;
         h.rooms[i].priority = -1;
         h.rooms[i].occupancy = 0;
+        h.rooms[i].time = 0;
     }
     // for(auto x: h.rooms)
     //     cout<<x.current_guest<<" "<<x.occupancy<<" "<<x.priority<<endl;

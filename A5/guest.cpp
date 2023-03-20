@@ -40,9 +40,10 @@ void* guest_routine(void* arg)
             }
             else
             {
-                // pthread_mutex_lock(&mutex_hotel);
-                pthread_cond_signal(&cond_guest_wait);
-                // pthread_mutex_unlock(&mutex_hotel);
+
+                pthread_mutex_lock(&mutex_hotel);
+                    pthread_cond_signal(&cond_guest_wait);
+                pthread_mutex_unlock(&mutex_hotel);
                 pthread_t target = evict(hotel, N, pthread_self(), pr, targetidx);
                 
             }
@@ -66,9 +67,10 @@ void* guest_routine(void* arg)
             struct timespec t;
             clock_gettime(CLOCK_REALTIME, &t);
             t.tv_sec += dstay(gen);
+
             pthread_mutex_lock(&mutex_hotel);
             while(targetidx != i)
-            pthread_cond_timedwait(&cond_guest_wait, &mutex_hotel, &t);
+                pthread_cond_timedwait(&cond_guest_wait, &mutex_hotel, &t);
             pthread_mutex_unlock(&mutex_hotel);
 
             pthread_mutex_lock(&mutex_hotel);
