@@ -2,10 +2,10 @@
 // runner function for cleaner threads
 void *cleaner_routine(void *arg)
 {
+    int idx = *(int *)arg;
     while (1)
     {
         int i=0;
-        int idx = *(int *)arg;
         int cleantime = 0;
         pthread_mutex_lock(&total_occupancy);
         while (hotel.tot_occupancy < 2 * N)
