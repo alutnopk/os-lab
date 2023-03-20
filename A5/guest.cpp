@@ -21,10 +21,10 @@ void* guest_routine(void* arg)
         sleep(dsleep(gen));
 
         // wait if occupancy is full
-        pthread_mutex_lock(&mutex_hotel);
+        pthread_mutex_lock(&total_occupancy);
         while(hotel.tot_occupancy == 2*N)
-            pthread_cond_wait(&cond_guest_wait, &mutex_hotel);
-        pthread_mutex_unlock(&mutex_hotel);
+            pthread_cond_wait(&cond_guest_wait, &total_occupancy);
+        pthread_mutex_unlock(&total_occupancy);
 
         int semval = -1;
         // TODO:
