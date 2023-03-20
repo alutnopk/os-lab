@@ -23,14 +23,15 @@ void *cleaner_routine(void *arg)
             {
                 cleantime = hotel.rooms[i].time;
                 hotel.rooms[i].time = 0;
+                hotel.rooms[i].priority = 0;
                 hotel.rooms[i].occupancy = 0;
-                hotel.rooms[i].current_guest = 0;
+                hotel.rooms[i].current_guest = NULL;
             }
             pthread_mutex_unlock(&mutex_hotel);
             sleep(cleantime);
         }
         pthread_mutex_lock(&total_occupancy);
-        if(i==N && hotel.tot_occupancy != 0)
+        if(i == N && hotel.tot_occupancy != 0)
         {
             hotel.tot_occupancy = 0;
         }
