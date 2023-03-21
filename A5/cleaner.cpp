@@ -45,24 +45,24 @@ void* cleaner_routine(void* arg)
                 if(room_idx >= 0) // room allotted
                 {
                     // cleaner locks the room and cleans it
-                    cout<<"Cleaner "<<idx<<" allotted Room "<<room_idx<<endl;
+                    sem_wait(&sem_stdcout); cout<<"Cleaner "<<idx<<" allotted Room "<<room_idx<<endl; sem_post(&sem_stdcout);
 
                     pthread_mutex_lock(&mutex_evict[room_idx]);
                     hotel.rooms[room_idx].occupancy = -1;
                     clean_time = k*(hotel.rooms[room_idx].time);
                     // cleaner cleans
-                    cout<<"Cleaner "<<idx<<" busy cleaning..."<<endl;
+                    sem_wait(&sem_stdcout); cout<<"Cleaner "<<idx<<" busy cleaning..."<<endl; sem_post(&sem_stdcout);
                     sleep(clean_time);
                     hotel.rooms[room_idx].occupancy = 0;
                     hotel.rooms[room_idx].time = 0;
                     hotel.tot_occupancy -= 2;
                     pthread_mutex_unlock(&mutex_evict[room_idx]);
-                    cout<<"Cleaner "<<idx<<" finished cleaning"<<endl;
+                    sem_wait(&sem_stdcout);cout<<"Cleaner "<<idx<<" finished cleaning"<<endl; sem_post(&sem_stdcout);
                 }
                 else
                     break;
             }
-            cout<<"Cleaner "<<idx<<" entering the second barrier..."<<endl;
+            sem_wait(&sem_stdcout); cout<<"Cleaner "<<idx<<" entering the second barrier..."<<endl; sem_post(&sem_stdcout);
             pthread_barrier_wait(&barr_cleaner);
 
             if(hotel.tot_occupancy != 0) throw runtime_error("Cleanup was not fully done");

@@ -43,7 +43,7 @@ extern Hotel hotel;
 extern vector<pair<pthread_t, pair<int, int>>> guests;
 
 extern sem_t sem_guest; // tracks the number of vacant rooms
-extern sem_t stdcout; // to keep the output clean
+extern sem_t sem_stdcout; // to keep the output clean
 extern pthread_mutex_t mutex_hotel; // for mutual exclusion while accessing the hotel structure
 
 extern vector<pthread_mutex_t> mutex_evict;

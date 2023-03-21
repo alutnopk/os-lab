@@ -7,7 +7,7 @@ Hotel hotel;
 vector<pair<pthread_t, pair<int, int>>> guests;
 
 sem_t sem_guest;
-sem_t stdcout;
+sem_t sem_stdcout;
 pthread_mutex_t mutex_hotel = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_guest = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_cleaner = PTHREAD_COND_INITIALIZER;
@@ -63,20 +63,6 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 
     cout<<"Guest priorities: "<<endl;
     for(int i=0; i<Y; i++) { cout<<guests[i].second.second<<endl; }
-
-    // signal handler and unmasking
-    // signal(SIGUSR1, guest_sighandler);
-    // sigset_t signal_mask;
-    // sigemptyset(&signal_mask);  // Initialize the signal mask to empty
-    // sigaddset(&signal_mask, SIGUSR1);  // Add SIGUSR1 to the signal mask
-    // if(pthread_sigmask(SIG_UNBLOCK, &signal_mask, NULL) == -1) { cerr<<"Failure in removal of SIGUSR1 from sigmask"<<endl; }  // Unblock SIGUSR1 for all threads
-
-    // struct sigaction sa;
-    // sa.sa_handler = guest_sighandler;
-    // sigemptyset(&sa.sa_mask);
-    // sa.sa_flags = 0;
-    // if (sigaction(SIGUSR1, &sa, NULL) == -1)
-    //     { cerr<<"Signal handler setup failure"<<endl; }
     
     // thread creation
     for(int i=0; i<Y; i++)
@@ -94,7 +80,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 
     // initialize semaphores here
     sem_init(&sem_guest, 0, N);
-    sem_init(&stdcout, 0, 1);
+    sem_init(&sem_stdcout, 0, 1);
     cout<<"Semaphores created"<<endl;
 
     // thread cleanup
@@ -115,7 +101,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
     // TODO: signal handler for clean termination
     // TODO: destroy everything
     if(sem_destroy(&sem_guest) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
-    if(sem_destroy(&stdcout) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
+    if(sem_destroy(&sem_stdcout) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
 
     if(pthread_mutex_destroy(&mutex_hotel) == -1) { cerr<<"Failed to destroy mutex"<<endl; }
     if(pthread_cond_destroy(&cond_guest) == -1) { cerr<<"Failed to destroy condition variable"<<endl; }
@@ -126,6 +112,16 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
         pthread_mutex_destroy(&mutex_evict[i]);
         pthread_cond_destroy(&cond_evict[i]);
     }
+    for(int i=0; i<Y; i++)
+    {
+        pthread_mutex_destroy(&mutex_guest[i]);
+    }
+    for(int i=0; i<X; i++)
+    {
+        pthread_mutex_destroy(&mutex_cleaner[i]);
+    }
+    pthread_barrier_destroy(&barr_guest);
+    pthread_barrier_destroy(&barr_cleaner);
     
     return 0;
 }
@@ -226,8 +222,8 @@ pthread_t evict(Hotel &h, int n, pthread_t g, int pr, int idx)
     h.tot_occupancy += 1;
     return prev_guest;
 }
-// for Burra's OCD
-int clean_assign(Hotel &h, int n)
+// Assign rooms
+int clean_assign(Hotel &h, int n) // TODO: actually assign random rooms
 {
     if(h.tot_occupancy == 0) return -1;
     int i;
