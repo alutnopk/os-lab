@@ -27,7 +27,7 @@ void* guest_routine(void* arg)
             // guest is let in, they inquire for a room
             if(sem_trywait(&sem_guest) == -1) // if hotel is fully occupied
             {
-                cout<<"Hotel full. Looking for victims..."<<endl;
+                cout<<"Hotel full. Guest "<<pr<<" looking for potential victims..."<<endl;
                 pthread_mutex_lock(&mutex_hotel);
                 evict_target_idx = find_lowerpr_guest(hotel, N, pr); // guest locates a victim to replace
                 // how about we maintain the index of the lowest priority dude and just target them everytime
@@ -35,8 +35,9 @@ void* guest_routine(void* arg)
                 if(evict_target_idx == -1) // no guest is kickable
                 {
                     // guest has no choice but to wait on the semaphore
-                    cout<<"No lower priority guest exists"<<endl;
+                    cout<<"No lower priority guest exists. Guest "<<pr<<" waiting for someone to leave..."<<endl;
                     if(sem_wait(&sem_guest) == -1) { cerr<<"sem_wait failed in guest"<<endl; }
+                    cout<<"Guest "<<pr<<" has entered the hotel. Proceeding to book..."<<endl;
                     // guest has acquired the semaphore, pick a room and book it
                     pthread_mutex_lock(&mutex_hotel);
                     current_room_idx = book(hotel, N, pthread_self(), pr); // find first empty room by index and occupy it
@@ -67,7 +68,7 @@ void* guest_routine(void* arg)
                 current_room_idx = book(hotel, N, pthread_self(), pr); // find first empty room by index and occupy it
                 pthread_mutex_unlock(&mutex_hotel);
                 pthread_cond_signal(&cond_occupancy); // what if 2N is reached here itself? cleaners MUST kick the guests out in that case
-                cout<<endl<<"Guest of priority "<<pr<<" has occupied Room "<<current_room_idx<<endl;
+                cout<<endl<<"Guest "<<pr<<" has occupied Room "<<current_room_idx<<endl;
             }
 
             struct timespec t;
@@ -77,7 +78,7 @@ void* guest_routine(void* arg)
             int evict_status=0;
             // cout<<"Guest "<<pr<<" executing sem_timedwait() while in Room "<<current_room_idx<<"..."<<endl;
             pthread_mutex_lock(&mutex_evict[current_room_idx]);
-            while(pthread_equal(pthread_self(), hotel.rooms[current_room_idx].current_guest) && evict_status == 0)
+            while(pthread_equal(pthread_self(), hotel.rooms[current_room_idx].current_guest) && evict_status != 110)
                 evict_status = pthread_cond_timedwait(&cond_evict[current_room_idx], &mutex_evict[current_room_idx], &t);
             pthread_mutex_unlock(&mutex_evict[current_room_idx]);
 
@@ -86,24 +87,26 @@ void* guest_routine(void* arg)
 
             // cout<<"Guest "<<pr<<" leaves sem_timedwait()"<<endl;
 
-            if(evict_status == -1) // bruh what if it gets an evict message after it leaves sem_timedwait? lmao wow
+            if(evict_status == 110) // bruh what if it gets an evict message after it leaves sem_timedwait? lmao wow
             {
-                if(errno == ETIMEDOUT) cout<<"Stay complete of Guest "<<pr<<" at Room "<<current_room_idx<<endl; else throw runtime_error("guest.cpp: sem_timedwait() did not time out correctly");
+                // if(errno == ETIMEDOUT) cout<<"Stay complete of Guest "<<pr<<" at Room "<<current_room_idx<<endl; else throw runtime_error("guest.cpp: sem_timedwait() did not time out correctly");
+                cout<<"Stay complete of Guest "<<pr<<" at Room "<<current_room_idx<<endl;
                 // vacate normally
                 pthread_mutex_lock(&mutex_hotel);
                 vacate(hotel, N, pthread_self(), current_room_idx); // use current_room_idx to vacate
                 pthread_mutex_unlock(&mutex_hotel);
                 // release the semaphores
                 if(sem_post(&sem_guest) == -1) { cerr<<"sem_post failed in guest"<<endl; }
-                cout<<endl<<"Guest "<<pr<<" has left their room"<<endl;
+                cout<<"Guest "<<pr<<" has left their room"<<endl;
             }
-            else
+            else if (evict_status == 0)
             {
-                cout<<"Evict signal received at Room "<<current_room_idx<<" where "<<pr<<" is residing"<<endl;
+                cout<<"Evict signal received at Room "<<current_room_idx<<" where Guest "<<pr<<" is residing"<<endl;
                 // EVICTION PROCEDURE
                 // ...do nothing?
-                cout<<"Guest "<<pr<<" has received the boot from Room "<<current_room_idx<<endl;
+                cout<<"Guest "<<pr<<" has received the yeet from Room "<<current_room_idx<<endl;
             }   
+            else throw runtime_error("Unforeseen error in pthread_cond_timedwait()");
         }
     }
     catch(exception &e) { cerr<<e.what()<<endl; exit(EXIT_FAILURE); }
