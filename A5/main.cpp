@@ -148,7 +148,7 @@ void init(Hotel &h, int n)
 
     for(int i=0; i<n; i++)
     {
-        hotel.rooms[i].current_guest = NULL;
+        hotel.rooms[i].current_guest = (pthread_t)NULL;
         h.rooms[i].priority = -1;
         h.rooms[i].occupancy = 0;
         h.rooms[i].time = 0;
@@ -188,7 +188,7 @@ void vacate(Hotel &h, int n, pthread_t g, int idx, int t)
     int i = idx;
     if(pthread_equal(h.rooms[i].current_guest, g))
     {
-        h.rooms[i].current_guest = NULL;
+        h.rooms[i].current_guest = (pthread_t)NULL;
         h.rooms[i].priority = -1;
         h.rooms[i].time += t;
     }
