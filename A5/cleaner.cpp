@@ -1,5 +1,5 @@
 #include "headers.h"
-double k = 0.5; // TODO
+double k = 0.5;
 // runner function for cleaner threads
 void* cleaner_routine(void* arg)
 {
@@ -13,7 +13,7 @@ void* cleaner_routine(void* arg)
             int clean_time = 0;
             // cleaners accumulate at the barrier, waiting for all the guests to join
             pthread_barrier_wait(&barr_guest);
-            sem_wait(&sem_stdcout); cout<<"Cleaners unleashed"<<endl; sem_post(&sem_stdcout);
+            sem_wait(&sem_stdcout); cout<<"Cleaners released"<<endl; sem_post(&sem_stdcout);
             for(;1;)
             {
                 // pthread_mutex_lock(&mutex_cleaner[idx]);
@@ -22,9 +22,9 @@ void* cleaner_routine(void* arg)
                 // pthread_mutex_unlock(&mutex_cleaner[idx]);                
                 
                 // cleaner is assigned a random room
-                pthread_mutex_lock(&mutex_hotel);
-                room_idx = clean_assign(hotel, N); // what if all clean?
-                pthread_mutex_unlock(&mutex_hotel);
+                sem_wait(&sem_hotel);
+                room_idx = clean_assign(hotel, N);
+                sem_post(&sem_hotel);
 
                 if(room_idx >= 0) // room allotted
                 {
@@ -46,11 +46,11 @@ void* cleaner_routine(void* arg)
                 else
                     break;
             }
-            sem_wait(&sem_stdcout); cout<<"Cleaner "<<idx<<" entering the second barrier..."<<endl; sem_post(&sem_stdcout);
+            sem_wait(&sem_stdcout); cout<<"Cleaner "<<idx<<" waiting for all cleaners to be finished..."<<endl; sem_post(&sem_stdcout);
             pthread_barrier_wait(&barr_cleaner);
 
-            if(hotel.tot_occupancy != 0) throw runtime_error("Cleanup was not fully done"); // TODO: check this
-            // set semaphore to N
+            if(hotel.tot_occupancy != 0) throw runtime_error("Cleanup was not fully done");
+            // ensure the semaphore is N
             int semval;
             sem_getvalue(&sem_guest, &semval);
             for(;semval<N;)
@@ -59,7 +59,7 @@ void* cleaner_routine(void* arg)
                 sem_getvalue(&sem_guest, &semval);
             }
             pthread_cond_broadcast(&cond_guest);
-            cout<<"Cleanup fin."<<endl;
+            sem_wait(&sem_stdcout); cout<<"Cleanup finished. Opening the hotel..."<<endl; sem_post(&sem_stdcout);
         }
     }
     catch(exception &e) { cerr<<e.what()<<endl; exit(EXIT_FAILURE); }

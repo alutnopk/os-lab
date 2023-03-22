@@ -8,11 +8,11 @@ vector<pair<pthread_t, pair<int, int>>> guests;
 
 sem_t sem_guest;
 sem_t sem_stdcout;
-pthread_mutex_t mutex_hotel = PTHREAD_MUTEX_INITIALIZER;
+sem_t sem_hotel;
 pthread_cond_t cond_guest = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_cleaner = PTHREAD_COND_INITIALIZER;
 
-vector<pthread_mutex_t> mutex_evict; // these two are because semaphores turned out to be a huge disappointment
+vector<pthread_mutex_t> mutex_evict;
 vector<pthread_cond_t> cond_evict;
 vector<pthread_mutex_t> mutex_guest;
 vector<pthread_mutex_t> mutex_cleaner;
@@ -27,7 +27,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
     // initialization
     cleaners = vector<pair<pthread_t, int>>(X);
     init(hotel, N);
-    guests = vector<pair<pthread_t, pair<int, int>>>(Y); // can we use this somewhere else?
+    guests = vector<pair<pthread_t, pair<int, int>>>(Y);
     
     mutex_evict = vector<pthread_mutex_t>(N, PTHREAD_MUTEX_INITIALIZER);
     cond_evict = vector<pthread_cond_t>(N, PTHREAD_COND_INITIALIZER);
@@ -81,6 +81,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
     // initialize semaphores here
     sem_init(&sem_guest, 0, N);
     sem_init(&sem_stdcout, 0, 1);
+    sem_init(&sem_hotel, 0, 1);
     cout<<"Semaphores created"<<endl;
 
     // thread cleanup
@@ -98,13 +99,12 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
     }
 
     // destroy semaphores and mutexes
-    // optional TODO: signal handler for clean termination
-    if(sem_destroy(&sem_guest) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
-    if(sem_destroy(&sem_stdcout) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
+    sem_destroy(&sem_guest);
+    sem_destroy(&sem_stdcout);
+    sem_destroy(&sem_hotel);
 
-    if(pthread_mutex_destroy(&mutex_hotel) == -1) { cerr<<"Failed to destroy mutex"<<endl; }
-    if(pthread_cond_destroy(&cond_guest) == -1) { cerr<<"Failed to destroy condition variable"<<endl; }
-    if(pthread_cond_destroy(&cond_cleaner) == -1) { cerr<<"Failed to destroy condition variable"<<endl; }
+    pthread_cond_destroy(&cond_guest);
+    pthread_cond_destroy(&cond_cleaner);
 
     for(int i=0; i<N; i++)
     {
@@ -148,7 +148,7 @@ void init(Hotel &h, int n)
 
     for(int i=0; i<n; i++)
     {
-        hotel.rooms[i].current_guest = NULL;
+        hotel.rooms[i].current_guest = (pthread_t)NULL;
         h.rooms[i].priority = -1;
         h.rooms[i].occupancy = 0;
         h.rooms[i].time = 0;
@@ -188,7 +188,7 @@ void vacate(Hotel &h, int n, pthread_t g, int idx, int t)
     int i = idx;
     if(pthread_equal(h.rooms[i].current_guest, g))
     {
-        h.rooms[i].current_guest = NULL;
+        h.rooms[i].current_guest = (pthread_t)NULL;
         h.rooms[i].priority = -1;
         h.rooms[i].time += t;
     }
@@ -221,7 +221,7 @@ pthread_t evict(Hotel &h, int n, pthread_t g, int pr, int idx)
     h.tot_occupancy += 1;
     return prev_guest;
 }
-// Assign rooms
+// Assign a room to a cleaner
 int clean_assign(Hotel &h, int n)
 {
     if(h.tot_occupancy == 0) return -1;
