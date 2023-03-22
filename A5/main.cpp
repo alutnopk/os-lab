@@ -2,71 +2,130 @@
 
 long X, N, Y;
 
-vector<pthread_t> cleaners;
+vector<pair<pthread_t, int>> cleaners;
 Hotel hotel;
-vector<pthread_t> guests;
+vector<pair<pthread_t, pair<int, int>>> guests;
 
 sem_t sem_guest;
-sem_t sem_cleaner;
+sem_t sem_stdcout;
 pthread_mutex_t mutex_hotel = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t total_occupancy = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond_occupancy = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cond_guest_wait = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_guest = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_cleaner = PTHREAD_COND_INITIALIZER;
+
+vector<pthread_mutex_t> mutex_evict; // these two are because semaphores turned out to be a huge disappointment
+vector<pthread_cond_t> cond_evict;
+vector<pthread_mutex_t> mutex_guest;
+vector<pthread_mutex_t> mutex_cleaner;
+
+pthread_barrier_t barr_guest;
+pthread_barrier_t barr_cleaner;
 
 int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
 {
     try{ parse_input(argc, argv, X, N, Y); } // reads and validates command line inputs
-    catch(runtime_error& e) { cerr<<e.what()<<endl; return EXIT_FAILURE; }
-
+    catch(exception& e) { cerr<<e.what()<<endl; return EXIT_FAILURE; }
     // initialization
-    cleaners = vector<pthread_t>(X);
+    cleaners = vector<pair<pthread_t, int>>(X);
     init(hotel, N);
-    guests = vector<pthread_t>(Y);
+    guests = vector<pair<pthread_t, pair<int, int>>>(Y); // can we use this somewhere else?
+    
+    mutex_evict = vector<pthread_mutex_t>(N, PTHREAD_MUTEX_INITIALIZER);
+    cond_evict = vector<pthread_cond_t>(N, PTHREAD_COND_INITIALIZER);
+    mutex_guest = vector<pthread_mutex_t>(Y, PTHREAD_MUTEX_INITIALIZER);
+    mutex_cleaner = vector<pthread_mutex_t>(X, PTHREAD_MUTEX_INITIALIZER);
 
+    pthread_barrier_init(&barr_guest, NULL, static_cast<unsigned int>(X+Y));
+    pthread_barrier_init(&barr_cleaner, NULL, static_cast<unsigned int>(X));
+
+    // assign non-repeating guest priorities
+    random_device rd; mt19937 gen(rd());
+    vector<int> fisher_yates(Y);
+    for(int i=0; i<Y; i++) fisher_yates[i] = i+1;
+
+    for (int i=Y-1; i>=1; i--)
+    {
+        uniform_int_distribution<int> dpr(0, i);
+        int j = dpr(gen);
+        int temp = fisher_yates[i];
+        fisher_yates[i] = fisher_yates[j];
+        fisher_yates[j] = temp;
+    }
+
+    for(int i=0; i<X; i++)
+    {
+        cleaners[i].second = i;
+    }
+    for(int i=0; i<Y; i++)
+    {
+        guests[i].second.first = i;
+        guests[i].second.second = fisher_yates[i]; 
+    }
+
+    cout<<"Guest priorities: "<<endl;
+    for(int i=0; i<Y; i++) { cout<<guests[i].second.second<<endl; }
+    
     // thread creation
     for(int i=0; i<Y; i++)
     {
-        // TODO: figure out how to assign random distinct priorities (perhaps shuffle a list of numbers 1 to Y)
-        int ret = pthread_create(&guests[i], NULL, guest_routine, (void*)&i);
+        int ret = pthread_create(&(guests[i].first), NULL, guest_routine, (void*)&(guests[i].second));
         if(ret) { cerr<<"Failure in guest thread creation"<<endl; }
         else cout<<"Guest thread "<<i<<" created"<<endl;
     }
     for(int i=0; i<X; i++)
     {
-        int ret = pthread_create(&cleaners[i], NULL, cleaner_routine, (void*)&i);
+        int ret = pthread_create(&(cleaners[i].first), NULL, cleaner_routine, (void*)&(cleaners[i].second));
         if(ret) { cerr<<"Failure in cleaner thread creation"<<endl; }
         else cout<<"Cleaner thread "<<i<<" created"<<endl;
     }
 
     // initialize semaphores here
-
-    if(sem_init(&sem_guest, 0, N) == -1) { cerr<<"Failure in semaphore initialization"<<endl; return EXIT_FAILURE; }
-    // if(sem_init(&sem_cleaner, 0, X) == -1) { cerr<<"Failure in semaphore initialization"<<endl; return EXIT_FAILURE; }
-
-    cout<<"Semaphore created"<<endl;
+    sem_init(&sem_guest, 0, N);
+    sem_init(&sem_stdcout, 0, 1);
+    cout<<"Semaphores created"<<endl;
 
     // thread cleanup
     for(int i=0; i<Y; i++)
     {
-        int ret = pthread_join(guests[i], NULL);
+        int ret = pthread_join(guests[i].first, NULL);
         if(ret) { cerr<<"Failure in guest thread join"<<endl; }
         else cout<<"Guest thread "<<i<<" terminated"<<endl;
     }
     for(int i=0; i<X; i++)
     {
-        int ret = pthread_join(guests[i], NULL);
+        int ret = pthread_join(guests[i].first, NULL);
         if(ret) { cerr<<"Failure in cleaner thread join"<<endl; }
         else cout<<"Cleaner thread "<<i<<" terminated"<<endl;
     }
 
     // destroy semaphores and mutexes
+    // TODO: signal handler for clean termination
+    // TODO: destroy everything
     if(sem_destroy(&sem_guest) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
+    if(sem_destroy(&sem_stdcout) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
+
     if(pthread_mutex_destroy(&mutex_hotel) == -1) { cerr<<"Failed to destroy mutex"<<endl; }
-    if(pthread_cond_destroy(&cond_occupancy) == -1) { cerr<<"Failed to destroy condition variable"<<endl; }
+    if(pthread_cond_destroy(&cond_guest) == -1) { cerr<<"Failed to destroy condition variable"<<endl; }
+    if(pthread_cond_destroy(&cond_cleaner) == -1) { cerr<<"Failed to destroy condition variable"<<endl; }
+
+    for(int i=0; i<N; i++)
+    {
+        pthread_mutex_destroy(&mutex_evict[i]);
+        pthread_cond_destroy(&cond_evict[i]);
+    }
+    for(int i=0; i<Y; i++)
+    {
+        pthread_mutex_destroy(&mutex_guest[i]);
+    }
+    for(int i=0; i<X; i++)
+    {
+        pthread_mutex_destroy(&mutex_cleaner[i]);
+    }
+    pthread_barrier_destroy(&barr_guest);
+    pthread_barrier_destroy(&barr_cleaner);
     
     return 0;
 }
-// read X, N, Y and validate them
+// Read X, N, Y and validate them
 void parse_input(int argc, char** argv, long &X, long &N, long &Y)
 {
     if(argc != 4) throw runtime_error("Expected usage: ./a.out <X> <N> <Y>");
@@ -81,11 +140,10 @@ void parse_input(int argc, char** argv, long &X, long &N, long &Y)
     if(!((X>=1) && (N>X) && (Y>N)))
         throw runtime_error("parse_input: Inputs must satisfy 1 <= X < N < Y\nExpected usage: ./<exec> <X> <N> <Y>");
 }
-
-// self-explanatory
+// Self-explanatory
 void init(Hotel &h, int n)
 {
-    if(n <= 0) throw runtime_error("init: Cannot make hotel with n < 1");
+    if(n < 2) throw runtime_error("init: Cannot make hotel with n < 2");
     h.rooms = vector<Room>(n);
     h.tot_occupancy = 0;
 
@@ -99,45 +157,53 @@ void init(Hotel &h, int n)
     // for(auto x: h.rooms)
     //     cout<<x.current_guest<<" "<<x.occupancy<<" "<<x.priority<<endl;
 }
-// locate empty room and allot to guest (only used when hotel isn't full)
-void book(Hotel &h, int n, pthread_t g, int pr)
+// Locate empty room and allot to guest. Only to be used when hotel isn't full
+int book(Hotel &h, int n, pthread_t g, int pr)
 {
-    if(h.tot_occupancy == 2*n) throw runtime_error("book: All rooms have occupancy 2");
+    if(h.tot_occupancy >= 2*n) return -1; // throw runtime_error("book: All rooms have occupancy 2 (or more)");
     int i;
     for(i=0; i<n; i++)
     {
         if( h.rooms[i].priority == -1 && h.rooms[i].occupancy < 2 )
         break;
     }
-    if(i == n) throw runtime_error("book: Cannot find an empty room");
+    if(i == n) return -1; // throw runtime_error("book: Cannot find an empty room");
 
     h.rooms[i].current_guest = g;
     h.rooms[i].priority = pr;
     h.rooms[i].occupancy += 1;
     h.tot_occupancy += 1;
+
+    return i;
 }
-// self-explanatory
-void vacate(Hotel &h, int n, pthread_t g)
+// Self-explanatory
+void vacate(Hotel &h, int n, pthread_t g, int idx, int t)
 {
-    int i;
-    for(i=0; i<n; i++)
+    // int i;
+    // for(i=0; i<n; i++)
+    // {
+    //     if(pthread_equal(g, h.rooms[i].current_guest))
+    //         break;
+    // }
+    // if(i == n) throw runtime_error("vacate: Could not locate guest in hotel");
+    int i = idx;
+    if(pthread_equal(h.rooms[i].current_guest, g))
     {
-        if(pthread_equal(g, h.rooms[i].current_guest))
-            break;
+        h.rooms[i].current_guest = NULL;
+        h.rooms[i].priority = -1;
+        h.rooms[i].time += t;
     }
-    if(i == n) throw runtime_error("vacate: Could not locate guest in hotel");
+    else throw runtime_error("vacate: Guest doesn't match");
 
-    h.rooms[i].current_guest = NULL;
-    h.rooms[i].priority = -1;
 }
-
-// find the room with the lower priority guest
+// Find the room with the lower priority guest. Only to be used when hotel is fully occupied
 int find_lowerpr_guest(Hotel &h, int n, int pr)
 {
-    int i,flag=-1;
-    for(i=0;i<n;i++)
+    int i, flag=-1;
+    for(i=0; i<n; i++)
     {
-        if(h.rooms[i].priority < pr && h.rooms[i].occupancy < 2)
+        if(h.rooms[i].priority == -1) return -1; // throw runtime_error("find_lowerpr_guest: Function called despite presence of empty room(s)");
+        if(h.rooms[i].priority < pr && h.rooms[i].occupancy < 2 )
         {
             flag = i;
             break;
@@ -145,15 +211,28 @@ int find_lowerpr_guest(Hotel &h, int n, int pr)
     }
     return flag;
 }
-
-// yeet the guest out
-pthread_t evict(Hotel &h, int n, pthread_t g, int pr,int idx)
+// Update room credentials with new guest. Only to be used on an occupied room
+pthread_t evict(Hotel &h, int n, pthread_t g, int pr, int idx)
 {
-    // TODO
-    pthread_t temp = h.rooms[idx].current_guest;
+    if(h.rooms[idx].priority == -1) throw runtime_error("evict: Room is already empty");
+    pthread_t prev_guest = h.rooms[idx].current_guest;
     h.rooms[idx].current_guest = g;
     h.rooms[idx].priority = pr;
-    h.rooms[idx].occupancy++;
-    hotel.tot_occupancy++;
-    return temp;
+    h.rooms[idx].occupancy += 1;
+    h.tot_occupancy += 1;
+    return prev_guest;
+}
+// Assign rooms
+int clean_assign(Hotel &h, int n) // TODO: actually assign random rooms
+{
+    if(h.tot_occupancy == 0) return -1;
+    int i;
+    for(i=0; i<n; i++)
+    {
+        if( h.rooms[i].priority == -1 && h.rooms[i].occupancy == 2 )
+        break;
+    }
+    if(i == n) return -1;
+
+    return i;
 }
