@@ -1,26 +1,8 @@
 #include "headers.h"
-int k = 0.5;
+double k = 0.5; // TODO
 // runner function for cleaner threads
 void* cleaner_routine(void* arg)
 {
-    // // int idx = *(int*)arg;
-    // pthread_mutex_lock(&mutex_hotel);
-    // while(hotel.tot_occupancy < 2*N)
-    //     pthread_cond_wait(&cond_cleaner, &mutex_hotel);
-    // pthread_mutex_unlock(&mutex_hotel);
-    // // Cleaner apparently kicks out the guests at this point LOL
-    // cout<<"Hotel cleanup begins. Evicting current guests"<<endl;
-    // // clean all the rooms
-    // // TODO
-    // for(int i=0; i<N; i++)
-    // {
-    //     if(hotel.rooms[i].occupancy == 2)
-    //     {
-    //         pthread_t target = evict(hotel, N, pthread_self(), 0, i);
-    //         pthread_kill(target, SIGUSR1);
-    //     }
-    // }
-    // pthread_exit(0);
     int* p = reinterpret_cast<int*>(arg);
     int idx = *p;
     try
@@ -31,7 +13,7 @@ void* cleaner_routine(void* arg)
             int clean_time = 0;
             // cleaners accumulate at the barrier, waiting for all the guests to join
             pthread_barrier_wait(&barr_guest);
-            cout<<"Cleaners unleashed"<<endl;
+            sem_wait(&sem_stdcout); cout<<"Cleaners unleashed"<<endl; sem_post(&sem_stdcout);
             for(;1;)
             {
                 // pthread_mutex_lock(&mutex_cleaner[idx]);
@@ -40,7 +22,9 @@ void* cleaner_routine(void* arg)
                 // pthread_mutex_unlock(&mutex_cleaner[idx]);                
                 
                 // cleaner is assigned a random room
+                pthread_mutex_lock(&mutex_hotel);
                 room_idx = clean_assign(hotel, N); // what if all clean?
+                pthread_mutex_unlock(&mutex_hotel);
 
                 if(room_idx >= 0) // room allotted
                 {
@@ -49,7 +33,7 @@ void* cleaner_routine(void* arg)
 
                     pthread_mutex_lock(&mutex_evict[room_idx]);
                     hotel.rooms[room_idx].occupancy = -1;
-                    clean_time = k*(hotel.rooms[room_idx].time);
+                    clean_time = (int)(k*(hotel.rooms[room_idx].time));
                     // cleaner cleans
                     sem_wait(&sem_stdcout); cout<<"Cleaner "<<idx<<" busy cleaning..."<<endl; sem_post(&sem_stdcout);
                     sleep(clean_time);
@@ -65,7 +49,7 @@ void* cleaner_routine(void* arg)
             sem_wait(&sem_stdcout); cout<<"Cleaner "<<idx<<" entering the second barrier..."<<endl; sem_post(&sem_stdcout);
             pthread_barrier_wait(&barr_cleaner);
 
-            if(hotel.tot_occupancy != 0) throw runtime_error("Cleanup was not fully done");
+            if(hotel.tot_occupancy != 0) throw runtime_error("Cleanup was not fully done"); // TODO: check this
             // set semaphore to N
             int semval;
             sem_getvalue(&sem_guest, &semval);

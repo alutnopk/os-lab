@@ -1,6 +1,6 @@
 #include "headers.h"
 // runner function for guest threads
-void* guest_routine(void* arg)
+void* guest_routine(void* arg) // TODO: improve prints by specifying priorities and times stayed
 {
     pair<int, int>* p = reinterpret_cast<pair<int, int>*>(arg);
     int idx = p->first;
@@ -42,14 +42,14 @@ void* guest_routine(void* arg)
                 {
                     // guest has no choice but to wait on the semaphore
                     sem_wait(&sem_stdcout); cout<<"No lower priority guest exists. Guest "<<pr<<" waiting for someone to vacate..."<<endl; sem_post(&sem_stdcout);
-                    if(sem_wait(&sem_guest) == -1) { cerr<<"sem_wait failed in guest"<<endl; }
+                    sem_wait(&sem_guest);
                     sem_wait(&sem_stdcout); cout<<"Guest "<<pr<<" has entered the hotel now. Proceeding to book..."<<endl; sem_post(&sem_stdcout);
                     // guest has acquired the semaphore, pick a room and book it
                     pthread_mutex_lock(&mutex_hotel);
                     current_room_idx = book(hotel, N, pthread_self(), pr); // find first empty room by index and occupy it
                     pthread_mutex_unlock(&mutex_hotel);
-                    if(current_room_idx == -1) continue;
-                    pthread_cond_broadcast(&cond_cleaner);
+                    if(current_room_idx == -1) { sem_post(&sem_guest); continue; }
+                    // pthread_cond_broadcast(&cond_cleaner);
                     sem_wait(&sem_stdcout); cout<<endl<<"Guest "<<pr<<" has occupied Room "<<current_room_idx<<endl; sem_post(&sem_stdcout);
                 }
                 else
@@ -58,9 +58,10 @@ void* guest_routine(void* arg)
                     
                     // guest replaces room credentials with self's
                     pthread_mutex_lock(&mutex_evict[evict_target_idx]);
-                    pthread_t target_tid = evict(hotel, N, pthread_self(), pr, evict_target_idx); // TODO
+                    evict(hotel, N, pthread_self(), pr, evict_target_idx);
                     pthread_mutex_unlock(&mutex_evict[evict_target_idx]);
                     pthread_cond_broadcast(&cond_evict[evict_target_idx]);
+                    // pthread_cond_broadcast(&cond_cleaner);
                     // if(sem_post(&sem_evict[evict_target_idx]) == -1) { cerr<<"sem_post on sem_evict failed"<<endl; }
                     current_room_idx = evict_target_idx;
                     sem_wait(&sem_stdcout); cout<<"Guest "<<pr<<" has forcefully occupied Room "<<current_room_idx<<endl; sem_post(&sem_stdcout);
@@ -72,8 +73,8 @@ void* guest_routine(void* arg)
                 pthread_mutex_lock(&mutex_hotel);
                 current_room_idx = book(hotel, N, pthread_self(), pr); // find first empty room by index and occupy it
                 pthread_mutex_unlock(&mutex_hotel);
-                if(current_room_idx == -1) continue;
-                pthread_cond_broadcast(&cond_cleaner); // what if 2N is reached here itself? cleaners MUST kick the guests out in that case
+                if(current_room_idx == -1) { sem_post(&sem_guest); continue; }
+                // pthread_cond_broadcast(&cond_cleaner); // what if 2N is reached here itself? cleaners MUST kick the guests out in that case
                 sem_wait(&sem_stdcout); cout<<"Guest "<<pr<<" has occupied Room "<<current_room_idx<<endl; sem_post(&sem_stdcout);
             }
 
@@ -102,10 +103,10 @@ void* guest_routine(void* arg)
                 sem_wait(&sem_stdcout); cout<<"Stay complete of Guest "<<pr<<" at Room "<<current_room_idx<<endl; sem_post(&sem_stdcout);
                 // vacate normally
                 pthread_mutex_lock(&mutex_evict[current_room_idx]);
-                vacate(hotel, N, pthread_self(), current_room_idx, stay_time); // TODO
+                vacate(hotel, N, pthread_self(), current_room_idx, stay_time);
                 pthread_mutex_unlock(&mutex_evict[current_room_idx]);
                 // release the semaphores
-                if(sem_post(&sem_guest) == -1) { cerr<<"sem_post failed in guest"<<endl; }
+                sem_post(&sem_guest);
                 sem_wait(&sem_stdcout); cout<<"Guest "<<pr<<" has vacated their room"<<endl; sem_post(&sem_stdcout);
             }
             else if (evict_status == 0) // Eviction signal

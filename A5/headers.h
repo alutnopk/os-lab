@@ -52,6 +52,7 @@ extern vector<pthread_mutex_t> mutex_guest;
 extern pthread_cond_t cond_guest; // for guests to wait until the hotel is fully cleaned
 extern vector<pthread_mutex_t> mutex_cleaner;
 extern pthread_cond_t cond_cleaner; // for cleaners to wait until the hotel is fully dirty
+
 extern pthread_barrier_t barr_guest;
 extern pthread_barrier_t barr_cleaner;
 
