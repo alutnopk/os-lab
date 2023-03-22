@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -Wextra -pthread
+CFLAGS = -Wall -pthread
 RM = rm -f
 HEADERS = headers.h
 MAIN = main.cpp

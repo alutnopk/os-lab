@@ -98,8 +98,7 @@ int main(int argc, char** argv) // Legal argument range: 1 <= X < N < Y
     }
 
     // destroy semaphores and mutexes
-    // TODO: signal handler for clean termination
-    // TODO: destroy everything
+    // optional TODO: signal handler for clean termination
     if(sem_destroy(&sem_guest) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
     if(sem_destroy(&sem_stdcout) == -1) { cerr<<"Failed to destroy semaphore"<<endl; }
 
@@ -223,16 +222,29 @@ pthread_t evict(Hotel &h, int n, pthread_t g, int pr, int idx)
     return prev_guest;
 }
 // Assign rooms
-int clean_assign(Hotel &h, int n) // TODO: actually assign random rooms
+int clean_assign(Hotel &h, int n)
 {
     if(h.tot_occupancy == 0) return -1;
+
+    random_device rd; mt19937 gen(rd());
+    vector<int> indexes(N);
+    for(int i=0; i<N; i++) indexes[i] = i;
+
+    for (int i=N-1; i>=1; i--)
+    {
+        uniform_int_distribution<int> did(0, i);
+        int j = did(gen);
+        int temp = indexes[i];
+        indexes[i] = indexes[j];
+        indexes[j] = temp;
+    }
     int i;
     for(i=0; i<n; i++)
     {
-        if( h.rooms[i].priority == -1 && h.rooms[i].occupancy == 2 )
+        if( h.rooms[indexes[i]].priority == -1 && h.rooms[indexes[i]].occupancy == 2 )
         break;
     }
     if(i == n) return -1;
 
-    return i;
+    return indexes[i];
 }
