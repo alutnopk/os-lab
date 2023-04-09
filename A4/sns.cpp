@@ -6,7 +6,7 @@
 Graph gptr;
 
 queue<Action> globalFeed;
-unordered_set<int> unreadNodes;
+set<int> unreadNodes;
 // TODO: Check if static initializers work correctly
 pthread_mutex_t mutexGlobalFeed = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condGlobalFeed = PTHREAD_COND_INITIALIZER;
@@ -34,7 +34,6 @@ void* userSimulator(void*)
 
     while(1)
     {
-        sleep(5);
         allNodeActions.clear();
         for (int i=0;i<100;i++)
         {
@@ -71,12 +70,12 @@ void* userSimulator(void*)
             snslog<<"User "<<a.userId<<" of degree "<<a.userDegree<<" has performed "<<action_types[a.actionType]<<" no. "<<a.actionId<<" at timestamp "<<a.actionTime<<"\n";
             // cout<<"User "<<a.userId<<" of degree "<<a.userDegree<<" has performed "<<action_types[a.actionType]<<" no. "<<a.actionId<<" at timestamp "<<a.actionTime<<"\n";
         }
-        snslog<<endl;
+        snslog<<endl; cout<<endl;
         snslog.close();
         pthread_mutex_unlock(&mutexSnslog);
         
         cout<<endl<<"User simulator going to sleep...\n"<<endl;
-        // sleep(120);
+        sleep(120);
     }
     pthread_exit(0);
 }
@@ -109,12 +108,18 @@ void* pushUpdate(void* arg)
 
         for(auto &nbr: gptr.nodelist[currentNode].nbrs) // for each neighbor
         {
-            // TODO: add priority condition here
             // push act into each neighbor
             pthread_mutex_lock(&mutexNodeFeed[nbr]);
             for(Action act: currentActions)
             {
-                gptr.nodelist[nbr].feed.push(act);
+                if(gptr.nodelist[nbr].orderType == 0) // priority based feed order
+                {
+                    gptr.nodelist[nbr].feed.push(make_pair(act.actionTime, act)); // TODO: add priority
+                }
+                else // chronological
+                {
+                    gptr.nodelist[nbr].feed.push(make_pair(act.actionTime, act));
+                }
             }
             pthread_mutex_unlock(&mutexNodeFeed[nbr]);
 
@@ -134,7 +139,7 @@ void* pushUpdate(void* arg)
                 snslog<<"Pushed action "<<action_types[act.actionType]<<"no. "<<act.actionId<<" from node "<<act.userId<<" to its neighbor "<<nbr<<"\n";
                 // cout<<"Pushed action "<<action_types[act.actionType]<<" from node "<<act.userId<<" to its neighbor "<<nbr<<"\n";
             }
-            snslog<<endl;
+            snslog<<endl; cout<<endl;
             snslog.close();
             pthread_mutex_unlock(&mutexSnslog);
         }
@@ -145,7 +150,40 @@ void* pushUpdate(void* arg)
 void* readPost(void* arg)
 {
     int idx = *((int*)arg);
+    int currentNode;
+    stringstream sstr;
+    fstream snslog;
+    while(1)
+    {
+        // acquire element whose feed queue is to be read
+        currentNode = -1;
+        sstr.str("");
+        pthread_mutex_lock(&mutexUnreadNodes);
+        while(unreadNodes.empty())
+            pthread_cond_wait(&condUnreadNodes, &mutexUnreadNodes);
+        currentNode = *(unreadNodes.begin()); unreadNodes.erase(unreadNodes.begin());
+        pthread_mutex_unlock(&mutexUnreadNodes);
+        pthread_cond_broadcast(&condUnreadNodes);
 
+        // read the feed and print
+        pthread_mutex_lock(&mutexNodeFeed[currentNode]);
+        if(!gptr.nodelist[currentNode].feed.empty())
+        {
+            // dequeue as per priority
+            Action act = gptr.nodelist[currentNode].feed.top().second;
+            gptr.nodelist[currentNode].feed.pop();
+            sstr<<currentNode<<" has read "<<action_types[act.actionType]<<" no. "<<act.actionId<<"posted by "<<act.userId<<" at timestamp"<<act.actionTime<<"\n";
+        }
+        pthread_mutex_unlock(&mutexNodeFeed[currentNode]);
+        string outs = sstr.str();
+        // write to sns.log
+        pthread_mutex_lock(&mutexSnslog);
+        snslog.open("sns.log", ios::out | ios::app);
+        snslog<<outs; cout<<outs;
+        snslog<<endl; cout<<endl;
+        snslog.close();
+        pthread_mutex_unlock(&mutexSnslog);
+    }
     pthread_exit(0);
 }
 
@@ -183,10 +221,10 @@ int main()
     }
 
     // Create pool of 10 readPost threads
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     pthread_create(&readThreads[i], NULL, readPost, NULL);
-    // }
+    for (int i = 0; i < 10; i++)
+    {
+        pthread_create(&readThreads[i], NULL, readPost, NULL);
+    }
 
     // Wait for all threads to finish
     pthread_join(userThread, NULL);
@@ -195,10 +233,10 @@ int main()
         pthread_join(pushThreads[i], NULL);
     }
     
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     pthread_join(readThreads[i], NULL);
-    // }
+    for (int i = 0; i < 10; i++)
+    {
+        pthread_join(readThreads[i], NULL);
+    }
     cout << "Main thread ends."<<endl;
     return 0;
 }
