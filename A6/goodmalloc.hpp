@@ -1,7 +1,7 @@
 #ifndef __GOODMALLOC_H_
 #define __GOODMALLOC_H_
 
-#include <stdio.h>
+#include <iostream>
 
 void createMem();
 void createList();

@@ -1,4 +1,4 @@
-#include "goodmalloc.h"
+#include "goodmalloc.hpp"
 
 void createMem()
 {

@@ -1,5 +1,5 @@
-#include <stdio.h>
-#include "goodmalloc.h"
+#include <iostream>
+#include "goodmalloc.hpp"
 
 
 int main(int argc, char **argv)
