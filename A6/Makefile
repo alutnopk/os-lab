@@ -9,7 +9,7 @@ a.out: $(TARGET_LIB) $(PROGRAM)
 	$(CC) $(CFLAGS) $(PROGRAM) -L. -lgoodmalloc
 
 $(TARGET_LIB): goodmalloc.o
-	$(AR) rcs $@ goodmalloc.o
+	$(AR) rcs $@ $^
 
 goodmalloc.o: goodmalloc.hpp goodmalloc.cpp
 	$(CC) $(CFLAGS) -c goodmalloc.cpp
