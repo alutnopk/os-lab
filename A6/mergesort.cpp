@@ -3,33 +3,29 @@
 #include <random>
 using namespace std;
 
-#define CREATEMEM_SIZE (250 * 1024 * 1024)
-#define CREATELIST_SIZE 50000
-#define ELEMENT_MAX 100000
-
-GoodMallocMemory M1;
+GoodMallocMemory M;
 
 int mergeSort(int head)
 {
-    M1.enterScope(__func__);
+    M.enterScope(__func__);
     
-    M1.exitScope();
+    M.exitScope();
 }
 
 int main(int argc, char **argv)
 {
-    M1.enterScope(__func__);
-    M1.createMem(CREATEMEM_SIZE);
-    M1.createList("mylist", CREATELIST_SIZE);
+    M.enterScope(__func__);
+    M.createMem(250 * 1024 * 1024);
+    M.createList("mylist", 50000);
     // assign random elements to list
     random_device rd; mt19937 gen(rd());
-    uniform_int_distribution<> dist(1, ELEMENT_MAX);
-    for(int i=0; i<CREATELIST_SIZE; i++) // optional TODO: improve efficiency
+    uniform_int_distribution<> dist(1, 100000);
+    for(int i=0; i<50000; i++) // optional TODO: improve efficiency
     {
-        M1.assignVal("mylist", i, dist(gen));
+        M.assignVal("mylist", i, dist(gen));
     }
     // perform merge sort
-    int sortedHead = mergeSort(M1.getFrameNo("mylist", 0));
-    
+    int sortedHead = mergeSort(M.getFrameNo("mylist", 0));
+    M.exitScope();
     return 0;
 }
