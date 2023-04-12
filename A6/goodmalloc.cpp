@@ -7,6 +7,7 @@ GoodMallocMemory::GoodMallocMemory()
     PT = map<string, PTEntry>();
     scope = "";
     freeFrameHead = -1;
+    freeFrameTail = -1;
     freeFrameCount = 0;
     varStack = stack<string>();
 }
@@ -22,6 +23,7 @@ void GoodMallocMemory::createMem(size_t memsize)
 
     // initialize memory with implicit free list
     freeFrameHead = 0;
+    freeFrameTail = maxFrameCount-1;
     freeFrameCount = maxFrameCount;
     for(int i=0; i<maxFrameCount; i++)
     {
@@ -49,13 +51,21 @@ void GoodMallocMemory::createList(string listname, size_t listlen)
     PTEntry newlist;
     newlist.head = newlist.tail = freeFrameHead;
     newlist.scope = 1;
-    for(int i=0; i<(listlen-1); i++)
+    for(size_t i=0; i<(listlen-1); i++)
     {
         if(mem[newlist.tail].next != -1) newlist.tail = mem[newlist.tail].next;
         else throw runtime_error("createList: Went out of free list bounds");
     }
-    freeFrameHead = mem[newlist.tail].next;
-    if(freeFrameHead != -1) mem[freeFrameHead].prev = -1;
+    // if all free frames used up
+    if(newlist.tail == freeFrameTail)
+    {
+        freeFrameHead = freeFrameTail = -1;
+    }
+    else
+    {
+        freeFrameHead = mem[newlist.tail].next;
+        mem[freeFrameHead].prev = -1;
+    }
     mem[newlist.tail].next = -1;
     freeFrameCount -= listlen;
     // add list to page table
@@ -64,40 +74,85 @@ void GoodMallocMemory::createList(string listname, size_t listlen)
     varStack.push(absolute_name);
     return;
 }
-// Update element of an existing doubly linked list.
-void GoodMallocMemory::assignVal(string listname, int offset, int value)
+// Update a specific element of a list. Worst case O(n) complexity.
+void GoodMallocMemory::assignVal(string listname, size_t offset, long value)
 {
-
+    string absolute_name = scope + " | " + listname;
+    if(PT.find(absolute_name) == PT.end()) throw runtime_error("assignVal: List does not exist");
+    PTEntry& currlist = PT[absolute_name];
+    if(currlist.scope == 0) throw runtime_error("assignVal: List is out-of-scope, cannot assign to it");
+    // Traverse list and assign element
+    int target = currlist.head;
+    for(size_t i=0; i<offset; i++)
+    {
+        if(mem[target].next != -1) target = mem[target].next;
+        else throw runtime_error("assignVal: Offset is out of bounds");
+    }
+    mem[target].data = value;
     return;
 }
 // Free the variables which are out-of-scope.
 void GoodMallocMemory::freeElem()
 {
-
+    // go through entire PT for entries where scope == 0, and do free on them each
+    for(auto it = PT.begin(); it != PT.end();)
+    {
+        if(it->second.scope == 0) // remove each list which is out-of-scope
+        {
+            cout<<"Freeing list "<<it->first<<endl;
+            PTEntry& currlist = it->second;
+            // append this list to freeframes list
+            mem[freeFrameTail].next = currlist.head;
+            mem[currlist.head].prev = freeFrameTail;
+            freeFrameTail = currlist.tail;
+            // O(n) updation code for freeFrameCount
+            freeFrameCount = 0;
+            for(int f=freeFrameHead; f!=-1; f = mem[f].next)
+            {
+                freeFrameCount++;
+            }
+            // remove page table entry
+            it = PT.erase(it);
+        }
+        else it++;
+    }
     return;
 }
-// Free a particular variable.
+// Free a particular list.
 void GoodMallocMemory::freeElem(string listname)
 {
-
+    string absolute_name = scope + " | " + listname;
+    if(PT.find(absolute_name) == PT.end()) throw runtime_error("freeElem: List does not exist");
+    PTEntry& currlist = PT[absolute_name];
+    // append this list to freeframes list
+    mem[freeFrameTail].next = currlist.head;
+    mem[currlist.head].prev = freeFrameTail;
+    freeFrameTail = currlist.tail;
+    // O(n) updation code for freeFrameCount
+    freeFrameCount = 0;
+    for(int f=freeFrameHead; f!=-1; f = mem[f].next)
+    {
+        freeFrameCount++;
+    }
+    // remove page table entry
+    PT.erase(absolute_name);
     return;
 }
 // Convert frame number to element pointer.
 Element* GoodMallocMemory::frameToPtr(int frameno)
 {
-
     return (this->mem + frameno*FRAMESIZE);
 }
 // Get the frame number of the node at an offset.
-int GoodMallocMemory::getFrameNo(string listname, int offset)
+int GoodMallocMemory::getFrameNo(string listname, size_t offset)
 {
 
     return;
 }
 // Assign to a node using the frame number +/- an offset.
-int GoodMallocMemory::setVal(int frameno, int offset, int value)
+int GoodMallocMemory::setVal(int frameno, int offset, long value)
 {
-    
+
     return;
 }
 // To be called immediately after entering a scope.
@@ -134,7 +189,8 @@ void GoodMallocMemory::exitScope()
         // mark the PTEntry of curr as out-of-scope
         if(PT.find(curr) != PT.end())
             PT[curr].scope = 0;
-        else throw runtime_error("exitScope: Stack variable not present in page table");
+        // there may be stack variables which are absent from the page table, presumably removed using freeElem(name)
+        // else throw runtime_error("exitScope: Stack variable not present in page table");
     }
     return;
 }

@@ -11,16 +11,16 @@ using namespace std;
 #define FRAMESIZE 16
 typedef struct _Element
 {
-    long int data : 64; // 8-byte integer element
+    long data : 64; // 8-byte integer element
     int prev : 32; // 4-byte
     int next : 32; // 4-byte
 } Element; // total size = 16 bytes
 
+// Optional TODO: Reduce page entry size
 typedef struct _PTEntry
 {
     int head; // 4-byte
     int tail; // 4-byte
-    // TODO: think if length needs to be stored
     int scope; // 4-byte
 } PTEntry; // total size = 12 bytes
 
@@ -32,6 +32,7 @@ class GoodMallocMemory
     // "listname" -> headidx, tailidx, "scope"
     string scope; // suffix used to scope list names
     int freeFrameHead; // logical pointer to beginning of implicit free list
+    int freeFrameTail;
     size_t freeFrameCount; // number of free frames
     stack<string> varStack; // global variable stack
 
@@ -39,14 +40,14 @@ class GoodMallocMemory
     GoodMallocMemory();
     void createMem(size_t memsize);
     void createList(string listname, size_t listlen);
-    void assignVal(string listname, int offset, int value);
+    void assignVal(string listname, size_t offset, long value);
     void freeElem();
     void freeElem(string listname);
     // TODO: add helper functions to append scope to variable names, parse them etc.
     // TODO: function to print list
     Element* frameToPtr(int frameno);
-    int getFrameNo(string listname, int offset);
-    int setVal(int frameno, int offset, int value);
+    int getFrameNo(string listname, size_t offset);
+    int setVal(int frameno, int offset, long value);
     void enterScope(string func);
     void exitScope();
 
