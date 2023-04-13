@@ -91,6 +91,46 @@ void GoodMallocMemory::assignVal(string listname, size_t offset, long value)
     mem[target].data = value;
     return;
 }
+// assign values to a list for a given offset and number of elements also check if the size of array is equal to number of elements to be updated
+void GoodMallocMemory::assignVal(string listname, size_t offset, size_t num, long *values)
+{
+    int size = 0;
+    while (values[size] != -1)
+    {
+        // cout<<values[size]<<endl;
+        size++;
+    }
+    cout << "size: " << size << endl;
+    cout<<"NUM: "<<num<<endl;
+    //find size of array
+    //check if num is equal to size of array
+    if(size != num)
+    {
+        throw runtime_error("assignVal: Number of elements to be updated is not equal to size of array");
+    }
+    string absolute_name = scope + " | " + listname;
+    if(PT.find(absolute_name) == PT.end()) throw runtime_error("assignVal: List does not exist");
+    PTEntry& currlist = PT[absolute_name];
+    if(currlist.scope == 0) throw runtime_error("assignVal: List is out-of-scope, cannot assign to it");
+    // Traverse list and assign element
+    int target = currlist.head;
+    for(size_t i=0; i<offset; i++)
+    {
+        if(mem[target].next != -1) target = mem[target].next;
+        else throw runtime_error("assignVal: Offset is out of bounds");
+    }
+    for(size_t i=0; i<num; i++)
+    {
+        if(mem[target].next == -1) throw runtime_error("assignVal: Offset is out of bounds");
+        mem[target].data = values[i];
+        target = mem[target].next;
+        
+    }
+    return;
+
+}
+
+
 // Free the variables which are out-of-scope.
 void GoodMallocMemory::freeElem()
 {

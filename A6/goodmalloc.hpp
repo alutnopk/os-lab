@@ -40,7 +40,9 @@ class GoodMallocMemory
     GoodMallocMemory();
     void createMem(size_t memsize);
     void createList(string listname, size_t listlen);
+    // assignVal function should take listname, offset of starting element to be update, number of elements to be updated and the array of values to be updated with
     void assignVal(string listname, size_t offset, long value);
+    void assignVal(string listname, size_t offset, size_t num, long* values);
     void freeElem();
     void freeElem(string listname);
     // TODO: add helper functions to append scope to variable names, parse them etc.

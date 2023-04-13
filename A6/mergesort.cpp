@@ -5,18 +5,20 @@ using namespace std;
 
 GoodMallocMemory M;
 
+void getsize(long arr[]);
+
 int mergeSort(int head)
 {
     M.enterScope(__func__);
     // base case
-    if(M.frameToPtr(head)->next == -1)
+    if (M.frameToPtr(head)->next == -1)
     {
         M.exitScope();
         return head;
     }
     // find middle element
     int slow = head, fast = head;
-    while(M.frameToPtr(fast)->next != -1 && M.frameToPtr(M.frameToPtr(fast)->next)->next != -1)
+    while (M.frameToPtr(fast)->next != -1 && M.frameToPtr(M.frameToPtr(fast)->next)->next != -1)
     {
         slow = M.frameToPtr(slow)->next;
         fast = M.frameToPtr(M.frameToPtr(fast)->next)->next;
@@ -58,8 +60,7 @@ int mergeSort(int head)
     //     else M.frameToPtr(sortedTail)->next = right;
     // }
 
-
-    cout<<M.frameToPtr(head)->data<<" "<<M.frameToPtr(mid)->data<<endl;
+    cout << M.frameToPtr(head)->data << " " << M.frameToPtr(mid)->data << endl;
 
     M.exitScope();
     return 0;
@@ -77,12 +78,23 @@ int main(int argc, char **argv)
     {
         M.assignVal("mylist", i, dist(gen));
     }
-    
+
     // perform merge sort
-    int sortedHead = mergeSort(M.getFrameNo("mylist", 0));
+    // int sortedHead = mergeSort(M.getFrameNo("mylist", 0));
     // print sorted list
+    // M.printList("mylist");
+    // M.assignVal("mylist", 0, 696969);
+
+    M.printList("mylist");
+    long arr[6] = {1, 2, 3, 4, 5, -1};
+
+    M.assignVal("mylist", 0, 5, arr);
+
     M.printList("mylist");
     M.exitScope();
+
+    // create array of 5 elemets with -1 at end
     
+
     return 0;
 }
