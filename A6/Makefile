@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall
 RM = rm -f
 AR = ar
 TARGET_LIB = libgoodmalloc.a
