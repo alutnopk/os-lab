@@ -1,11 +1,12 @@
 #include "goodmalloc.hpp"
+#include <chrono>
 // Constructor of the GoodMallocMemory class.
 GoodMallocMemory::GoodMallocMemory()
 {
     mem = nullptr;
     maxFrameCount = 0;
     PT = map<string, PTEntry>();
-    scope = "";
+    scopeStr = "";
     freeFrameHead = -1;
     freeFrameTail = -1;
     freeFrameCount = 0;
@@ -14,9 +15,10 @@ GoodMallocMemory::GoodMallocMemory()
 // Create contiguous memory segment to contain all linked lists.
 void GoodMallocMemory::createMem(size_t memsize)
 {
-    if(mem) throw runtime_error("createMem: Only one memory block to be created per instance of GoodMallocMemory");
+    if(mem) throw runtime_error("createMem: Only one memory block permitted per instance of GoodMallocMemory");
     // allocate space in multiple of Element size
     // Assumption: Element size is 2^4 bytes
+    // Assumption: maxFrameCount is within the range of int
     maxFrameCount = (memsize>>4)+1;
     mem = (Element*) calloc(maxFrameCount, FRAMESIZE);
     if(!mem) throw runtime_error("createMem: Memory allocation failure");
@@ -31,7 +33,7 @@ void GoodMallocMemory::createMem(size_t memsize)
         if(i==maxFrameCount-1) mem[i].next = -1;
         else mem[i].next = i+1;
     }
-    // return;
+    return;
 }
 // Create a doubly linked list inside contiguous memory.
 void GoodMallocMemory::createList(string listname, size_t listlen)
@@ -46,7 +48,7 @@ void GoodMallocMemory::createList(string listname, size_t listlen)
     if(listlen == 0)
         throw runtime_error("createList: List size must be a positive integer");
     
-    string absolute_name = scope + " | " + listname;
+    string absolute_name = scopeStr + "| " + listname;
     // traverse free list, allocate memory using First Fit
     PTEntry newlist;
     newlist.head = newlist.tail = freeFrameHead;
@@ -56,8 +58,7 @@ void GoodMallocMemory::createList(string listname, size_t listlen)
         if(mem[newlist.tail].next != -1) newlist.tail = mem[newlist.tail].next;
         else throw runtime_error("createList: Went out of free list bounds");
     }
-    // if all free frames used up
-    if(newlist.tail == freeFrameTail)
+    if(newlist.tail == freeFrameTail) // if all free frames are used up
     {
         freeFrameHead = freeFrameTail = -1;
     }
@@ -77,7 +78,7 @@ void GoodMallocMemory::createList(string listname, size_t listlen)
 // Update a specific element of a list. Worst case O(n) complexity.
 void GoodMallocMemory::assignVal(string listname, size_t offset, long value)
 {
-    string absolute_name = scope + " | " + listname;
+    string absolute_name = scopeStr + "| " + listname;
     if(PT.find(absolute_name) == PT.end()) throw runtime_error("assignVal: List does not exist");
     PTEntry& currlist = PT[absolute_name];
     if(currlist.scope == 0) throw runtime_error("assignVal: List is out-of-scope, cannot assign to it");
@@ -91,46 +92,6 @@ void GoodMallocMemory::assignVal(string listname, size_t offset, long value)
     mem[target].data = value;
     return;
 }
-// assign values to a list for a given offset and number of elements also check if the size of array is equal to number of elements to be updated
-void GoodMallocMemory::assignVal(string listname, size_t offset, size_t num, long *values)
-{
-    int size = 0;
-    while (values[size] != -1)
-    {
-        // cout<<values[size]<<endl;
-        size++;
-    }
-    cout << "size: " << size << endl;
-    cout<<"NUM: "<<num<<endl;
-    //find size of array
-    //check if num is equal to size of array
-    if(size != num)
-    {
-        throw runtime_error("assignVal: Number of elements to be updated is not equal to size of array");
-    }
-    string absolute_name = scope + " | " + listname;
-    if(PT.find(absolute_name) == PT.end()) throw runtime_error("assignVal: List does not exist");
-    PTEntry& currlist = PT[absolute_name];
-    if(currlist.scope == 0) throw runtime_error("assignVal: List is out-of-scope, cannot assign to it");
-    // Traverse list and assign element
-    int target = currlist.head;
-    for(size_t i=0; i<offset; i++)
-    {
-        if(mem[target].next != -1) target = mem[target].next;
-        else throw runtime_error("assignVal: Offset is out of bounds");
-    }
-    for(size_t i=0; i<num; i++)
-    {
-        if(mem[target].next == -1) throw runtime_error("assignVal: Offset is out of bounds");
-        mem[target].data = values[i];
-        target = mem[target].next;
-        
-    }
-    return;
-
-}
-
-
 // Free the variables which are out-of-scope.
 void GoodMallocMemory::freeElem()
 {
@@ -161,7 +122,7 @@ void GoodMallocMemory::freeElem()
 // Free a particular list.
 void GoodMallocMemory::freeElem(string listname)
 {
-    string absolute_name = scope + " | " + listname;
+    string absolute_name = scopeStr + "| " + listname;
     if(PT.find(absolute_name) == PT.end()) throw runtime_error("freeElem: List does not exist");
     PTEntry& currlist = PT[absolute_name];
     // append this list to freeframes list
@@ -181,32 +142,32 @@ void GoodMallocMemory::freeElem(string listname)
 // Print the contents of a list.
 void GoodMallocMemory::printList(string listname)
 {
-    string absolute_name = scope + " | " + listname;
+    string absolute_name = scopeStr + "| " + listname;
     if(PT.find(absolute_name) == PT.end()) throw runtime_error("printList: List does not exist");
     PTEntry& currlist = PT[absolute_name];
     if(currlist.scope == 0) throw runtime_error("printList: List is out-of-scope, cannot print it");
-    // Traverse list and print element
+    cout<<listname<<": "<<endl;
+    // Traverse list and print elements
     int target = currlist.head;
-    // int k=0;
-    while(target != -1)                     // remove k<50 to print entire list !!!!!!!!!!!!!!!!!!!!!!!!!!1
+    while(target != -1)
     {
-        cout<<mem[target].data<<" "<<endl;
+        cout<<mem[target].data<<endl;
         target = mem[target].next;
-        // k++;
     }
     cout<<endl;
     return;
 }
-
-// Convert frame number to element pointer.
+// Convert frame number to raw pointer.
 Element* GoodMallocMemory::frameToPtr(int frameno)
 {
+    if(frameno<0 || frameno >= maxFrameCount)
+        throw runtime_error("frameToPtr: Frame number out of range");
     return &mem[frameno];
 }
 // Get the frame number of the node at an offset.
 int GoodMallocMemory::getFrameNo(string listname, size_t offset)
 {
-    string absolute_name = scope + " | " + listname;
+    string absolute_name = scopeStr + "| " + listname;
     if(PT.find(absolute_name) == PT.end()) throw runtime_error("getFrameNo: List does not exist");
     PTEntry& currlist = PT[absolute_name];
     if(currlist.scope == 0) throw runtime_error("getFrameNo: List is out-of-scope, cannot access it");
@@ -231,29 +192,67 @@ int GoodMallocMemory::setVal(int frameno, int offset, long value)
     mem[target].data = value;
     return target;
 }
-// To be called immediately after entering a scope.
+// Reassign the list.
+void GoodMallocMemory::reassign(string listname, int frameno)
+{
+    if(frameno<0 || frameno >= maxFrameCount)
+        throw runtime_error("reassign: Frame number out of range");
+    string absolute_name = scopeStr + "| " + listname;
+    if(PT.find(absolute_name) == PT.end()) throw runtime_error("reassign: List does not exist");
+    PTEntry& currlist = PT[absolute_name];
+    if(currlist.scope == 0) throw runtime_error("reassign: List is out-of-scope, cannot access it");
+
+    currlist.head = frameno;
+    int i = currlist.head;
+    for(; mem[i].next != -1; i = mem[i].next);
+    currlist.tail = i;
+}
+// Prints the memory footprint at any particular time.
+void GoodMallocMemory::memoryFootprint()
+{
+    int total_frames = 0;
+    for(auto it = PT.begin(); it != PT.end(); it++)
+    {
+        // cout<<"Freeing list "<<it->first<<endl;
+        PTEntry& currlist = it->second;
+        // add to total_frames count
+        int target = currlist.head;
+        while(target != -1)
+        {
+            total_frames++;
+            target = mem[target].next;
+        }
+    }
+    // Get the current time point
+    auto now = chrono::system_clock::now();
+    // Convert time point to milliseconds since epoch
+    auto epoch_milliseconds = chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    // Print the epoch value in milliseconds
+    cout<<"Frames used: "<<total_frames<<" at epoch time "<<epoch_milliseconds<<" milliseconds"<<endl;
+}
+// Function to be mandatorily called immediately after entering a scope.
 void GoodMallocMemory::enterScope(string func)
 {
-    cout<<"Entering scope "<<func<<endl;
+    // cout<<"Entering scope "<<func<<endl;
     // prepend with current function name
-    scope = func + " " + scope;
+    scopeStr = func + " " + scopeStr;
     // mark the stack with sentinel string $
     varStack.push("$");
     return;
 }
-// To be called immediately before exiting a scope.
+// Function to be called immediately before exiting a scope.
 void GoodMallocMemory::exitScope()
 {
     // extract current scope prefix
     string prefix = "";
-    size_t pos = scope.find(" "); // Assumption: scope doesn't begin with " "
+    size_t pos = scopeStr.find(" "); // Assumption: scope doesn't begin with " "
     if(pos != string::npos)
     {
-        prefix = scope.substr(0, pos);
-        cout<<"Exiting scope "<<prefix<<endl;
-        scope.erase(0, pos+1);
+        prefix = scopeStr.substr(0, pos);
+        // cout<<"Exiting scope "<<prefix<<endl;
+        scopeStr.erase(0, pos+1);
     }
-    else scope = "";
+    else scopeStr = "";
     // pop from stack until $ is reached
     while(!varStack.empty())
     {

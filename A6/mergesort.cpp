@@ -5,13 +5,56 @@ using namespace std;
 
 GoodMallocMemory M;
 
-void getsize(long arr[]);
+int merge(int left, int right)
+{
+    M.enterScope(__func__);
+    if(left == -1)
+    {
+        M.exitScope();
+        return right;
+    }
+    if(right == -1)
+    {
+        M.exitScope();
+        return left;
+    }
+
+    int mergedlist = -1;
+    if(M.frameToPtr(left)->data < M.frameToPtr(right)->data)
+    {
+        // mergedlist = left;
+        // M.frameToPtr(mergedlist)->next = merge(M.frameToPtr(left)->next, right);
+        // M.frameToPtr(M.frameToPtr(mergedlist)->next)->prev = mergedlist;
+        // M.exitScope();
+        // return mergedlist;
+
+        M.frameToPtr(left)->next = merge(M.frameToPtr(left)->next, right);
+        M.frameToPtr(M.frameToPtr(left)->next)->prev = left;
+        M.frameToPtr(left)->prev = -1;
+        M.exitScope();
+        return left;
+    }
+    else
+    {
+        // mergedList = right;
+        // M.frameToPtr(mergedlist)->next = merge(left, M.frameToPtr(right)->next);
+        // M.frameToPtr(M.frameToPtr(mergedlist)->next)->prev = mergedlist;
+        // M.exitScope();
+        // return mergedlist;
+
+        M.frameToPtr(right)->next = merge(left, M.frameToPtr(right)->next);
+        M.frameToPtr(M.frameToPtr(right)->next)->prev = right;
+        M.frameToPtr(right)->prev = -1;
+        M.exitScope();
+        return right;
+    }
+}
 
 int mergeSort(int head)
 {
     M.enterScope(__func__);
     // base case
-    if (M.frameToPtr(head)->next == -1)
+    if(head == -1 || M.frameToPtr(head)->next == -1)
     {
         M.exitScope();
         return head;
@@ -23,78 +66,49 @@ int mergeSort(int head)
         slow = M.frameToPtr(slow)->next;
         fast = M.frameToPtr(M.frameToPtr(fast)->next)->next;
     }
+    // split the list in-place
     int mid = M.frameToPtr(slow)->next;
-    // M.frameToPtr(slow)->next = -1;
+    M.frameToPtr(slow)->next = -1;
 
-    // sort left and right halves
-    // int left = mergeSort(head);
-    // int right = mergeSort(mid);
+    // sort left and right sublists
+    head = mergeSort(head);
+    mid = mergeSort(mid);
 
-    // merge sorted halves
-    // int sortedHead = -1, sortedTail = -1;
-    // while(left != -1 && right != -1)
-    // {
-    //     if(M.frameToPtr(left)->data < M.frameToPtr(right)->data)
-    //     {
-    //         if(sortedHead == -1) sortedHead = left;
-    //         else M.frameToPtr(sortedTail)->next = left;
-    //         sortedTail = left;
-    //         left = M.frameToPtr(left)->next;
-    //     }
-    //     else
-    //     {
-    //         if(sortedHead == -1) sortedHead = right;
-    //         else M.frameToPtr(sortedTail)->next = right;
-    //         sortedTail = right;
-    //         right = M.frameToPtr(right)->next;
-    //     }
-    // }
-    // if(left != -1)
-    // {
-    //     if(sortedHead == -1) sortedHead = left;
-    //     else M.frameToPtr(sortedTail)->next = left;
-    // }
-    // if(right != -1)
-    // {
-    //     if(sortedHead == -1) sortedHead = right;
-    //     else M.frameToPtr(sortedTail)->next = right;
-    // }
-
-    cout << M.frameToPtr(head)->data << " " << M.frameToPtr(mid)->data << endl;
-
+    int result = merge(head, mid);
     M.exitScope();
-    return 0;
+    return result;
 }
+
 
 int main(int argc, char **argv)
 {
-    M.enterScope(__func__);
-    M.createMem(250 * 1024 * 1024);
-    M.createList("mylist", 10);
-    // assign random elements to list
-    random_device rd; mt19937 gen(rd());
-    uniform_int_distribution<> dist(1, 100000);
-    for(int i=0; i<10; i++) // optional TODO: improve efficiency
+    try
     {
-        M.assignVal("mylist", i, dist(gen));
+        M.enterScope(__func__);
+        M.createMem(250 * 1024 * 1024);
+        M.memoryFootprint();
+        M.createList("mylist", 50000);
+        M.memoryFootprint();
+        // assign random elements to list
+        random_device rd; mt19937 gen(rd());
+        uniform_int_distribution<> dist(1, 100000);
+        for(int i=0; i<50000; i++)
+        {
+            M.assignVal("mylist", i, dist(gen));
+        }
+        M.printList("mylist");
+
+        // perform merge sort
+        int sortedHead = mergeSort(M.getFrameNo("mylist", 0));
+        M.reassign("mylist", sortedHead);
+        cout<<"--------------------------------------------------------------------"<<endl;
+
+        M.printList("mylist");
+        M.exitScope();
+        M.memoryFootprint();
+        M.freeElem();
+        M.memoryFootprint();
+        return 0;
     }
-
-    // perform merge sort
-    // int sortedHead = mergeSort(M.getFrameNo("mylist", 0));
-    // print sorted list
-    // M.printList("mylist");
-    // M.assignVal("mylist", 0, 696969);
-
-    M.printList("mylist");
-    long arr[6] = {1, 2, 3, 4, 5, -1};
-
-    M.assignVal("mylist", 0, 5, arr);
-
-    M.printList("mylist");
-    M.exitScope();
-
-    // create array of 5 elemets with -1 at end
-    
-
-    return 0;
+    catch(exception &e){cerr<<e.what()<<endl; exit(EXIT_FAILURE);}
 }

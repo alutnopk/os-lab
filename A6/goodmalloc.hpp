@@ -16,7 +16,6 @@ typedef struct _Element
     int next : 32; // 4-byte
 } Element; // total size = 16 bytes
 
-// Optional TODO: Reduce page entry size
 typedef struct _PTEntry
 {
     int head; // 4-byte
@@ -27,12 +26,12 @@ typedef struct _PTEntry
 class GoodMallocMemory
 {
     Element* mem; // allocated memory, interpreted as an array of element-sized frames
-    size_t maxFrameCount; // maximum number of frames in the memory
+    int maxFrameCount; // maximum number of frames in the memory
     map<string, PTEntry> PT; // page table
-    // "listname" -> headidx, tailidx, "scope"
-    string scope; // suffix used to scope list names
+    // listname -> headidx, tailidx, scope
+    string scopeStr; // prefix used to scope list names
     int freeFrameHead; // logical pointer to beginning of implicit free list
-    int freeFrameTail;
+    int freeFrameTail; // logical pointer to end of free frame list
     size_t freeFrameCount; // number of free frames
     stack<string> varStack; // global variable stack
 
@@ -40,20 +39,17 @@ class GoodMallocMemory
     GoodMallocMemory();
     void createMem(size_t memsize);
     void createList(string listname, size_t listlen);
-    // assignVal function should take listname, offset of starting element to be update, number of elements to be updated and the array of values to be updated with
     void assignVal(string listname, size_t offset, long value);
-    void assignVal(string listname, size_t offset, size_t num, long* values);
     void freeElem();
     void freeElem(string listname);
-    // TODO: add helper functions to append scope to variable names, parse them etc.
-    // TODO: function to print list
     void printList(string listname);
     Element* frameToPtr(int frameno);
     int getFrameNo(string listname, size_t offset);
     int setVal(int frameno, int offset, long value);
+    void reassign(string listname, int frameno);
+    void memoryFootprint();
     void enterScope(string func);
     void exitScope();
-
 };
 
 #endif
