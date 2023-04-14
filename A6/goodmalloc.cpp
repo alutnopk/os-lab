@@ -217,10 +217,25 @@ int GoodMallocMemory::setVal(int frameno, int offset, long value)
     mem[target].data = value;
     return target;
 }
+// Reassign the list.
+void GoodMallocMemory::reassign(string listname, int frameno)
+{
+    if(frameno<0 || frameno >= maxFrameCount)
+        throw runtime_error("reassign: Frame number out of range");
+    string absolute_name = scopeStr + " | " + listname;
+    if(PT.find(absolute_name) == PT.end()) throw runtime_error("reassign: List does not exist");
+    PTEntry& currlist = PT[absolute_name];
+    if(currlist.scope == 0) throw runtime_error("reassign: List is out-of-scope, cannot access it");
+
+    currlist.head = frameno;
+    int i = currlist.head;
+    for(; mem[i].next != -1; i = mem[i].next);
+    currlist.tail = i;
+}
 // To be called immediately after entering a scope.
 void GoodMallocMemory::enterScope(string func)
 {
-    cout<<"Entering scope "<<func<<endl;
+    // cout<<"Entering scope "<<func<<endl;
     // prepend with current function name
     scopeStr = func + " " + scopeStr;
     // mark the stack with sentinel string $
@@ -236,7 +251,7 @@ void GoodMallocMemory::exitScope()
     if(pos != string::npos)
     {
         prefix = scopeStr.substr(0, pos);
-        cout<<"Exiting scope "<<prefix<<endl;
+        // cout<<"Exiting scope "<<prefix<<endl;
         scopeStr.erase(0, pos+1);
     }
     else scopeStr = "";

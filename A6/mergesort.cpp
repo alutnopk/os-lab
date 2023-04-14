@@ -19,8 +19,15 @@ int merge(int left, int right)
         return left;
     }
 
+    int mergedlist = -1;
     if(M.frameToPtr(left)->data < M.frameToPtr(right)->data)
     {
+        // mergedlist = left;
+        // M.frameToPtr(mergedlist)->next = merge(M.frameToPtr(left)->next, right);
+        // M.frameToPtr(M.frameToPtr(mergedlist)->next)->prev = mergedlist;
+        // M.exitScope();
+        // return mergedlist;
+
         M.frameToPtr(left)->next = merge(M.frameToPtr(left)->next, right);
         M.frameToPtr(M.frameToPtr(left)->next)->prev = left;
         M.frameToPtr(left)->prev = -1;
@@ -29,6 +36,12 @@ int merge(int left, int right)
     }
     else
     {
+        // mergedList = right;
+        // M.frameToPtr(mergedlist)->next = merge(left, M.frameToPtr(right)->next);
+        // M.frameToPtr(M.frameToPtr(mergedlist)->next)->prev = mergedlist;
+        // M.exitScope();
+        // return mergedlist;
+
         M.frameToPtr(right)->next = merge(left, M.frameToPtr(right)->next);
         M.frameToPtr(M.frameToPtr(right)->next)->prev = right;
         M.frameToPtr(right)->prev = -1;
@@ -56,7 +69,6 @@ int mergeSort(int head)
     // split the list in-place
     int mid = M.frameToPtr(slow)->next;
     M.frameToPtr(slow)->next = -1;
-    M.frameToPtr(mid)->prev = -1;
 
     // sort left and right sublists
     head = mergeSort(head);
@@ -86,8 +98,10 @@ int main(int argc, char **argv)
         M.printList("mylist");
 
         // perform merge sort
-        mergeSort(M.getFrameNo("mylist", 0));
+        int sortedHead = mergeSort(M.getFrameNo("mylist", 0));
+        M.reassign("mylist", sortedHead);
         cout<<"--------------------------------------------------------------------"<<endl;
+
         M.printList("mylist");
         M.exitScope();
         // delete M;

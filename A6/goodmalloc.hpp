@@ -48,6 +48,7 @@ class GoodMallocMemory
     Element* frameToPtr(int frameno);
     int getFrameNo(string listname, size_t offset);
     int setVal(int frameno, int offset, long value);
+    void reassign(string listname, int frameno);
     void enterScope(string func);
     void exitScope();
 };
