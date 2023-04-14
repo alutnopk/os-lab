@@ -82,12 +82,13 @@ int mergeSort(int head)
 
 int main(int argc, char **argv)
 {
-    // M = new GoodMallocMemory();
     try
     {
         M.enterScope(__func__);
         M.createMem(250 * 1024 * 1024);
+        M.memoryFootprint();
         M.createList("mylist", 50000);
+        M.memoryFootprint();
         // assign random elements to list
         random_device rd; mt19937 gen(rd());
         uniform_int_distribution<> dist(1, 100000);
@@ -104,7 +105,9 @@ int main(int argc, char **argv)
 
         M.printList("mylist");
         M.exitScope();
-        // delete M;
+        M.memoryFootprint();
+        M.freeElem();
+        M.memoryFootprint();
         return 0;
     }
     catch(exception &e){cerr<<e.what()<<endl; exit(EXIT_FAILURE);}

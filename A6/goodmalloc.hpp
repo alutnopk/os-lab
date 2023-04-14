@@ -16,7 +16,6 @@ typedef struct _Element
     int next : 32; // 4-byte
 } Element; // total size = 16 bytes
 
-// Optional TODO: Reduce page entry size
 typedef struct _PTEntry
 {
     int head; // 4-byte
@@ -41,7 +40,6 @@ class GoodMallocMemory
     void createMem(size_t memsize);
     void createList(string listname, size_t listlen);
     void assignVal(string listname, size_t offset, long value);
-    void assignValMultiple(string listname, size_t offset, long* values, size_t num);
     void freeElem();
     void freeElem(string listname);
     void printList(string listname);
@@ -49,6 +47,7 @@ class GoodMallocMemory
     int getFrameNo(string listname, size_t offset);
     int setVal(int frameno, int offset, long value);
     void reassign(string listname, int frameno);
+    void memoryFootprint();
     void enterScope(string func);
     void exitScope();
 };
