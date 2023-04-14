@@ -27,12 +27,12 @@ typedef struct _PTEntry
 class GoodMallocMemory
 {
     Element* mem; // allocated memory, interpreted as an array of element-sized frames
-    size_t maxFrameCount; // maximum number of frames in the memory
+    int maxFrameCount; // maximum number of frames in the memory
     map<string, PTEntry> PT; // page table
-    // "listname" -> headidx, tailidx, "scope"
-    string scope; // suffix used to scope list names
+    // listname -> headidx, tailidx, scope
+    string scopeStr; // prefix used to scope list names
     int freeFrameHead; // logical pointer to beginning of implicit free list
-    int freeFrameTail;
+    int freeFrameTail; // logical pointer to end of free frame list
     size_t freeFrameCount; // number of free frames
     stack<string> varStack; // global variable stack
 
@@ -41,16 +41,15 @@ class GoodMallocMemory
     void createMem(size_t memsize);
     void createList(string listname, size_t listlen);
     void assignVal(string listname, size_t offset, long value);
+    void assignValMultiple(string listname, size_t offset, long* values, size_t num);
     void freeElem();
     void freeElem(string listname);
-    // TODO: add helper functions to append scope to variable names, parse them etc.
-    // TODO: function to print list
+    void printList(string listname);
     Element* frameToPtr(int frameno);
     int getFrameNo(string listname, size_t offset);
     int setVal(int frameno, int offset, long value);
     void enterScope(string func);
     void exitScope();
-
 };
 
 #endif
